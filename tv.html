@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f1115">
+  <title>Life OS · TV</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="tv">
+  <header class="top">
+    <h1 id="date">Today</h1>
+    <div class="clock" id="clock">--:--</div>
+    <div class="status"><span id="status">Loading…</span><button id="signout" hidden>Sign out</button></div>
+  </header>
+  <nav class="day-strip" id="day-strip" hidden></nav>
+  <section class="now-banner" id="now-banner" hidden></section>
+  <section class="gate" id="gate" hidden>
+    <h2>Life OS</h2>
+    <p id="gate-message">Sign in with the family Google account to see today.</p>
+    <button id="signin">Sign in with Google</button>
+  </section>
+  <main class="board" id="board"></main>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="config.js"></script>
+  <script src="data/calendar.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

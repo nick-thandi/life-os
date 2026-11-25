@@ -1,0 +1,74 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1f232c;
+  --text: #f2f3f5;
+  --muted: #9aa3b2;
+  --line: #2a2f3a;
+  --accent: #ffcf5c;
+  --now: #4cd08a;
+  --dad: #5aa9ff;
+  --mum: #ff7eb6;
+  --kini: #b58cff;
+  --pooks: #ffa65c;
+  --family: #ffcf5c;
+  --radius: 14px;
+  --fs: 16px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: var(--fs)/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { min-height: 100vh; padding: 16px; }
+a { color: inherit; }
+button { font: inherit; cursor: pointer; }
+
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.top h1 { margin: 0; font-size: 1.5rem; font-weight: 650; letter-spacing: -0.01em; }
+.top .clock { font-size: 1.5rem; font-variant-numeric: tabular-nums; color: var(--accent); }
+.top .status { color: var(--muted); font-size: 0.85rem; width: 100%; display: flex; justify-content: space-between; }
+.top .status button { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 2px 10px; }
+
+.day-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 8px; }
+.day-strip button { flex: 0 0 auto; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+.day-strip button.active { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600; }
+
+.now-banner { display: grid; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; }
+.now-banner .label { display: inline-block; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); width: 3.6em; }
+.now-banner .now .label { color: var(--now); }
+.now-banner .when { color: var(--muted); }
+
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; border-top: 4px solid var(--family); }
+.card.person-dad { border-top-color: var(--dad); }
+.card.person-mum { border-top-color: var(--mum); }
+.card.person-kini { border-top-color: var(--kini); }
+.card.person-pooks { border-top-color: var(--pooks); }
+.card header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.card h2 { margin: 0; font-size: 1.1rem; }
+.card .count { color: var(--muted); font-size: 0.8rem; }
+.card ul { list-style: none; margin: 0; padding: 0; }
+.ev { display: grid; grid-template-columns: 4.5em 1fr; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
+.ev:first-child { border-top: 0; }
+.ev .time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ev .loc { color: var(--muted); }
+.ev.now .time, .ev.now .title { color: var(--now); font-weight: 600; }
+.ev.done { opacity: 0.45; text-decoration: line-through; }
+.ev.routine { font-size: 0.85em; opacity: 0.75; }
+.ev.allday .time { color: var(--accent); }
+.empty { color: var(--muted); padding: 7px 0; }
+
+.gate { max-width: 420px; margin: 20vh auto; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 22px; }
+.gate h2 { margin-top: 0; }
+.gate p { color: var(--muted); }
+.gate button { background: var(--accent); color: #111; border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 650; font-size: 1rem; }
+
+/* TV: big type, no day strip, no scrolling. */
+body.tv { --fs: 26px; padding: 32px 40px; overflow: hidden; }
+body.tv .top h1 { font-size: 2.2rem; }
+body.tv .top .clock { font-size: 2.6rem; }
+body.tv .day-strip { display: none; }
+body.tv .board { grid-template-columns: repeat(5, 1fr); align-items: start; }
+body.tv .card { padding: 18px 20px; }
+body.tv .ev { grid-template-columns: 4.2em 1fr; }
+body.tv .top .status button { display: none; }
+@media (max-width: 1400px) { body.tv .board { grid-template-columns: repeat(3, 1fr); } }
