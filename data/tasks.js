@@ -17,11 +17,11 @@
 
 (function () {
   const cfg = window.LIFE_OS_CONFIG;
-  const LIST_TITLE = "In-tray";
+  const LIST_NAMES = (cfg.taskListNames && cfg.taskListNames.length ? cfg.taskListNames : ["In-tray"]).map((n) => n.toLowerCase());
   const BASE = "https://tasks.googleapis.com/tasks/v1";
   const PRIORITIES = ["urgent", "high", "medium", "low"];
   const TAGS = ["home", "money", "health", "family", "career", "growth", "fun"];
-  let listId = null;
+  let listIds = null; // all matching lists, preferred first
 
   function token() {
     const t = window.LifeOSData && window.LifeOSData.accessToken && window.LifeOSData.accessToken();
@@ -55,13 +55,19 @@
     return res.status === 204 ? null : res.json();
   }
 
-  async function ensureList() {
-    if (listId) return listId;
+  async function ensureLists() {
+    if (listIds) return listIds;
     const lists = await api("/users/@me/lists?maxResults=100");
-    const found = (lists.items || []).find((l) => l.title.toLowerCase() === LIST_TITLE.toLowerCase());
-    if (found) return (listId = found.id);
-    const created = await api("/users/@me/lists", { method: "POST", body: { title: LIST_TITLE } });
-    return (listId = created.id);
+    const items = lists.items || [];
+    const found = [];
+    for (const name of LIST_NAMES) {
+      for (const l of items) if ((l.title || "").trim().toLowerCase() === name) found.push(l.id);
+    }
+    if (!found.length) {
+      const created = await api("/users/@me/lists", { method: "POST", body: { title: cfg.taskListNames ? cfg.taskListNames[0] : "In-tray" } });
+      found.push(created.id);
+    }
+    return (listIds = found);
   }
 
   // ---- parsing ----
@@ -105,12 +111,13 @@
     return m.join(" ");
   }
 
-  function toTicket(task) {
+  function toTicket(task, listId) {
     const p = parse((task.notes || "") + " " + (task.title || ""));
     // Title is the task's own title; notes carry the markers.
     const fromNotes = parse(task.notes || "");
     return {
       id: task.id,
+      listId: listId,
       title: task.title || "(no title)",
       priority: fromNotes.priority || p.priority,
       tag: fromNotes.tag || p.tag,
@@ -128,25 +135,26 @@
   }
 
   async function list() {
-    const id = await ensureList();
-    const res = await api("/lists/" + id + "/tasks?showCompleted=false&showHidden=false&maxResults=100");
-    return (res.items || [])
-      .filter((t) => t.title && t.title.trim())
-      .map(toTicket)
-      .sort((a, b) => rank(a) - rank(b) || (b.updated || 0) - (a.updated || 0));
+    const ids = await ensureLists();
+    const all = [];
+    for (const id of ids) {
+      const res = await api("/lists/" + id + "/tasks?showCompleted=false&showHidden=false&maxResults=100");
+      for (const t of res.items || []) if (t.title && t.title.trim()) all.push(toTicket(t, id));
+    }
+    return all.sort((a, b) => rank(a) - rank(b) || (b.updated || 0) - (a.updated || 0));
   }
 
   async function add(text) {
     const p = parse(text);
     if (!p.title) throw new Error("Nothing to add");
-    const id = await ensureList();
-    const task = await api("/lists/" + id + "/tasks", { method: "POST", body: { title: p.title, notes: markers(p) } });
-    return toTicket(task);
+    const ids = await ensureLists();
+    const task = await api("/lists/" + ids[0] + "/tasks", { method: "POST", body: { title: p.title, notes: markers(p) } });
+    return toTicket(task, ids[0]);
   }
 
-  async function complete(taskId) {
-    const id = await ensureList();
-    await api("/lists/" + id + "/tasks/" + taskId, { method: "PATCH", body: { status: "completed" } });
+  async function complete(taskId, listId) {
+    const ids = await ensureLists();
+    await api("/lists/" + (listId || ids[0]) + "/tasks/" + taskId, { method: "PATCH", body: { status: "completed" } });
   }
 
   window.LifeOSTasks = { list, add, complete, parse, PRIORITIES, TAGS };

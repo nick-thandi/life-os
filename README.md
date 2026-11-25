@@ -51,7 +51,7 @@ The app is plain files, so any static host works. The URL must be `https` and mu
 
 ## In-tray
 
-Tickets live in a Google Tasks list called **In-tray** on whichever account is signed in on that device (the app creates it): each person signs in with their own Gmail on their phone and gets their own in-tray; the TV and Hubs use the family account and get the household one. Lists cannot be seen across accounts; that is the point at which a shared database would be needed. Priority, tag, time, "big" and "blocked" are short markers in the task's notes (`!high #home ~30m big blocked: reason`), written and read by the app, so the list is also usable from the Google Tasks app and by voice on Google Home ("Hey Google, add … to my In-tray list"). Ticking a ticket marks it completed in Google Tasks; nothing is ever deleted.
+Tickets live in a Google Tasks list called **In-tray** (or **Inbox**, **Tickets** or **Entry**; voice assistants mishear "in-tray", and the app reads all of them) on whichever account is signed in on that device (the app creates it): each person signs in with their own Gmail on their phone and gets their own in-tray; the TV and Hubs use the family account and get the household one. Lists cannot be seen across accounts; that is the point at which a shared database would be needed. Priority, tag, time, "big" and "blocked" are short markers in the task's notes (`!high #home ~30m big blocked: reason`), written and read by the app, so the list is also usable from the Google Tasks app and by voice on Google Home ("Hey Google, add … to my In-tray list"). Ticking a ticket marks it completed in Google Tasks; nothing is ever deleted.
 
 Sign-in scope is calendar read-only plus Google Tasks. Changing scope made every browser sign in again once.
 

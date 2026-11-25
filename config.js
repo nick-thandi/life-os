@@ -23,6 +23,12 @@ window.LIFE_OS_CONFIG = {
   // shown smaller (they still appear, nothing is hidden).
   routinePrefixes: ["routine", "[block]"],
 
+  // Google Tasks lists that count as the in-tray, in order of preference.
+  // Tickets are read from every one that exists and added to the first that
+  // exists (created with the first name if none do). Several names because
+  // voice assistants mishear "in-tray".
+  taskListNames: ["In-tray", "Inbox", "Tickets", "Entry"],
+
   // Refresh interval in minutes for the live view.
   refreshMinutes: 5,
 

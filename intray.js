@@ -32,7 +32,7 @@
         "</div></div>";
       li.querySelector(".done").onclick = async () => {
         li.classList.add("gone");
-        try { await tasks.complete(t.id); items = items.filter((x) => x.id !== t.id); render(); }
+        try { await tasks.complete(t.id, t.listId); items = items.filter((x) => x.id !== t.id); render(); }
         catch (e) { li.classList.remove("gone"); $.status.textContent = e.message; }
       };
       $.list.appendChild(li);
