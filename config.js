@@ -4,7 +4,7 @@
 window.LIFE_OS_CONFIG = {
   // Paste the OAuth 2.0 Web client ID from Google Cloud Console here.
   // Leave empty to run in demo mode with made-up data.
-  googleClientId: "",
+  googleClientId: "267063610765-60nthkltc39dtmqp5n3916hjbnr4beo0.apps.googleusercontent.com",
 
   // The shared family calendar that every screen reads.
   calendarId: "oceansfamily2018@gmail.com",
