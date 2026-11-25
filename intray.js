@@ -51,7 +51,7 @@
     try {
       $.status.textContent = "Updating…";
       items = await tasks.list();
-      $.status.textContent = "Updated";
+      $.status.textContent = "In-tray of " + ((await data.who()) || "this account");
       gate(false);
       render();
     } catch (e) {

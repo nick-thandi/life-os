@@ -16,7 +16,7 @@
 (function () {
   const cfg = window.LIFE_OS_CONFIG;
   const TOKEN_KEY = "lifeos.google.token.v2";
-  const SCOPE = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks";
+  const SCOPE = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/userinfo.email";
 
   let tokenClient = null;
   let token = loadToken();
@@ -184,9 +184,24 @@
     return isSignedIn() && token ? token.access_token : null;
   }
   function dropToken() {
+    whoCache = null;
     token = null;
     saveToken(null);
   }
 
-  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, eventsForDay, accessToken, dropToken };
+  let whoCache = null;
+  async function who() {
+    if (mode() === "demo") return "demo";
+    if (whoCache) return whoCache;
+    if (!isSignedIn()) return "";
+    try {
+      const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: "Bearer " + token.access_token } });
+      if (!r.ok) return "";
+      const j = await r.json();
+      whoCache = j.email || "";
+      return whoCache;
+    } catch (e) { return ""; }
+  }
+
+  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, eventsForDay, accessToken, dropToken, who };
 })();
