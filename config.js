@@ -27,7 +27,7 @@ window.LIFE_OS_CONFIG = {
   // Tickets are read from every one that exists and added to the first that
   // exists (created with the first name if none do). Several names because
   // voice assistants mishear "in-tray".
-  taskListNames: ["In-tray", "Inbox", "Tickets", "Entry"],
+  taskListNames: ["Tickets", "Ticket", "In-tray", "Inbox", "Entry"],
 
   // Refresh interval in minutes for the live view.
   refreshMinutes: 5,
