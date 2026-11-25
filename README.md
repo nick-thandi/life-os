@@ -12,6 +12,7 @@ Version 1 is a static web app. There is no server and no database. Each screen s
 | `tv.html` | Same data, big type, no scrolling, for the Fire Stick / Nest Hub browser |
 | `app.js` | Rendering: header, day strip, Now/Next banner, one card per person |
 | `data/calendar.js` | The data layer: Google sign-in and calendar reads (demo data until configured) |
+| `intray.html`, `intray.js`, `data/tasks.js` | The in-tray: capture by typing or voice, priority/tag/time markers, backed by a Google Tasks list called "In-tray" on the family account |
 | `config.js` | Client ID, calendar, people and their title prefixes |
 | `styles.css`, `manifest.webmanifest`, `icons/` | Look, install metadata, icons |
 
@@ -47,6 +48,18 @@ The app is plain files, so any static host works. The URL must be `https` and mu
 - **Mac**: Chrome → menu → *Install Life OS*, or Safari → File → *Add to Dock*.
 - **Fire Stick**: Silk browser → open `/tv.html`, sign in once, bookmark it; set Silk to open it on launch.
 - **Nest Hub**: "Hey Google, open <URL>" in the Hub's browser, or cast a Chrome tab showing `/tv.html`.
+
+## In-tray
+
+Tickets live in a Google Tasks list called **In-tray** on the family account (the app creates it). Priority, tag, time, "big" and "blocked" are short markers in the task's notes (`!high #home ~30m big blocked: reason`), written and read by the app, so the list is also usable from the Google Tasks app and by voice on Google Home ("Hey Google, add … to my In-tray list"). Ticking a ticket marks it completed in Google Tasks; nothing is ever deleted.
+
+Sign-in scope is calendar read-only plus Google Tasks. Changing scope made every browser sign in again once.
+
+## Saved for version 2
+
+- A Life OS home-screen and lock-screen widget on the phone (KWGT or similar), so today is visible without opening anything.
+- Screens around the house that show today without anyone remembering to look or switching anything on: a wall tablet in kiosk mode on `tv.html`; pictures of today pushed to the Nest Hubs' ambient mode.
+- A proper UI and UX pass (Nick is adding a design doc to the project).
 
 ## Rules for this repository
 

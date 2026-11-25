@@ -15,8 +15,8 @@
 
 (function () {
   const cfg = window.LIFE_OS_CONFIG;
-  const TOKEN_KEY = "lifeos.google.token";
-  const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+  const TOKEN_KEY = "lifeos.google.token.v2";
+  const SCOPE = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks";
 
   let tokenClient = null;
   let token = loadToken();
@@ -180,5 +180,13 @@
     return mode() === "demo" ? demoEvents(date) : googleEvents(date);
   }
 
-  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, eventsForDay };
+  function accessToken() {
+    return isSignedIn() && token ? token.access_token : null;
+  }
+  function dropToken() {
+    token = null;
+    saveToken(null);
+  }
+
+  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, eventsForDay, accessToken, dropToken };
 })();
