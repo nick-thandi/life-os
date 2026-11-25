@@ -159,7 +159,7 @@
       render();
     } catch (err) {
       if (String(err.message).includes("not signed in")) {
-        showGate(true, "Sign in with the family Google account to see today.");
+        showGate(true, "Sign in with Google (your own account on your phone, the family account on the TV) to see today.");
       } else {
         $.status.textContent = "Could not update: " + err.message;
       }
@@ -192,7 +192,7 @@
       await waitForGoogle();
       const ok = await data.signInSilently();
       if (!ok) {
-        showGate(true, "Sign in with the family Google account to see today.");
+        showGate(true, "Sign in with Google (your own account on your phone, the family account on the TV) to see today.");
       }
     }
     await load();
