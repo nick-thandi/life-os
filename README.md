@@ -38,7 +38,7 @@ Until a client ID is set the app runs with made-up demo data, so it can be opene
 The app is plain files, so any static host works. The URL must be `https` and must match the origin added in step 4.
 
 - **GitHub Pages**: Settings → Pages → Deploy from branch `main` / root. On a free account Pages is only available for *public* repositories. That exposes the code, not any data (the repo never contains family data; the client ID is public by design). A GitHub Pro plan allows Pages on a private repo.
-- **Cloudflare Pages** (free, works with a private repo): connect the repo, no build command, output directory `/`.
+- **Chosen (25 Nov 2026): GitHub Pages.** The repository is public so that Pages is free; it holds code only.
 
 ## Install on each screen
 
