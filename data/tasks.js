@@ -60,8 +60,10 @@
     const lists = await api("/users/@me/lists?maxResults=100");
     const items = lists.items || [];
     const found = [];
+    const norm = (t) => String(t || "").toLowerCase().replace(/[^a-z]/g, "").replace(/list$/, "").replace(/s$/, "");
     for (const name of LIST_NAMES) {
-      for (const l of items) if ((l.title || "").trim().toLowerCase() === name) found.push(l.id);
+      const n = norm(name);
+      for (const l of items) if (norm(l.title) === n && !found.includes(l.id)) found.push(l.id);
     }
     if (!found.length) {
       const created = await api("/users/@me/lists", { method: "POST", body: { title: cfg.taskListNames ? cfg.taskListNames[0] : "In-tray" } });
