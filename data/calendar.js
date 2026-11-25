@@ -133,12 +133,18 @@
       "/events?" +
       params.toString();
     const res = await fetch(url, { headers: { Authorization: "Bearer " + token.access_token } });
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       token = null;
       saveToken(null);
       throw new Error("not signed in");
     }
-    if (!res.ok) throw new Error("Calendar request failed (" + res.status + ")");
+    if (!res.ok) {
+      let reason = "";
+      try { const j = await res.json(); reason = (j.error && j.error.message) || ""; } catch (e) { /* no body */ }
+      if (res.status === 403 && /insufficient/i.test(reason)) { token = null; saveToken(null); throw new Error("not signed in"); }
+      if (res.status === 404 || /not found/i.test(reason)) throw new Error("the family calendar is not shared with this account");
+      throw new Error("Google Calendar said: " + (reason || res.status));
+    }
     const body = await res.json();
     return (body.items || [])
       .filter((e) => e.status !== "cancelled")

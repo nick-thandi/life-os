@@ -36,11 +36,22 @@
       headers: Object.assign({ Authorization: "Bearer " + token() }, opts.body ? { "Content-Type": "application/json" } : {}),
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       window.LifeOSData.dropToken();
       throw new Error("not signed in");
     }
-    if (!res.ok) throw new Error("Tasks request failed (" + res.status + ")");
+    if (!res.ok) {
+      let reason = "";
+      try { const j = await res.json(); reason = (j.error && j.error.message) || ""; } catch (e) { /* no body */ }
+      if (res.status === 403 && /has not been used|is disabled|accessNotConfigured/i.test(reason)) {
+        throw new Error("Google Tasks API is not enabled in the Life OS Google Cloud project. Enable it under APIs & Services, then reload.");
+      }
+      if (res.status === 403 && /insufficient/i.test(reason)) {
+        window.LifeOSData.dropToken();
+        throw new Error("not signed in");
+      }
+      throw new Error("Google Tasks said: " + (reason || res.status));
+    }
     return res.status === 204 ? null : res.json();
   }
 
