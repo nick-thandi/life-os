@@ -53,7 +53,7 @@
   function ensureTokenClient() {
     if (tokenClient) return tokenClient;
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
-      throw new Error("Google sign-in library has not loaded yet.");
+      throw new Error("Google's sign-in script did not load (blocked or offline); reload the page");
     }
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: cfg.googleClientId,
@@ -75,7 +75,13 @@
         saveToken(token);
         resolve();
       };
-      client.error_callback = (err) => reject(new Error(err && err.type ? err.type : "sign-in failed"));
+      client.error_callback = (err) => {
+        const t = err && err.type;
+        const msg = t === "popup_failed_to_open" ? "the sign-in pop-up was blocked; allow pop-ups for this site in the browser settings"
+          : t === "popup_closed" ? "the sign-in window was closed before finishing"
+          : t || "sign-in failed";
+        reject(new Error(msg));
+      };
       client.requestAccessToken({ prompt });
     });
   }
