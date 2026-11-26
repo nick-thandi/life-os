@@ -87,10 +87,10 @@
       card.className = "card person-" + c.id;
       const open = list.filter((e) => state(e, now) !== "done").length;
       card.innerHTML =
-        '<header><h2>' + esc(c.name) + '</h2><span class="count">' + (list.length ? open + " to go" : "") + "</span></header>";
+        '<header><h2>' + esc(c.name) + '</h2><span class="count">' + (list.length ? (open ? open + " to go" : "All done") : "") + "</span></header>";
       const ul = document.createElement("ul");
       if (!list.length) {
-        ul.innerHTML = '<li class="empty">Nothing on</li>';
+        ul.innerHTML = '<li class="empty">' + (c.id === "family" ? "Nothing for everyone today" : "Nothing planned") + "</li>";
       }
       for (const e of list) {
         const li = document.createElement("li");

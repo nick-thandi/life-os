@@ -11,8 +11,7 @@
 </head>
 <body>
   <header class="top">
-    <h1>In-tray</h1>
-    <nav class="tabs"><a href="index.html">Today</a><a class="active" href="intray.html">In-tray</a></nav>
+    <h1 id="heading">In-tray</h1>
     <div class="status"><span id="status">Loading…</span><span id="count"></span></div>
   </header>
 
@@ -23,15 +22,18 @@
   </section>
 
   <main id="main">
-    <form class="add" id="add-form">
-      <textarea id="add-input" rows="1" placeholder="Add a ticket… e.g. Book boiler service urgent home 15 min" autocomplete="off"></textarea>
-      <button type="button" id="mic" title="Speak" aria-label="Speak">🎤</button>
-      <button type="submit" class="go">Add</button>
-    </form>
-    <div class="preview" id="preview"></div>
-    <ul class="tickets" id="list"></ul>
+    <ul class="tickets" id="list" aria-live="polite"></ul>
     <p class="hint">Say or type the task, then any of: <b>urgent / high / medium / low</b>, a tag (<b>home money health family career growth fun</b>), a time (<b>30 min, 2 hours</b>), <b>big</b>, or <b>blocked: reason</b>. Each account has its own in-tray (a Google Tasks list called Tickets, Ticket, In-tray, Inbox or Entry): sign in with your own Gmail on your phone, the family account on the TV. Ticking a ticket completes it in Google Tasks; nothing is deleted.</p>
   </main>
+
+  <form class="add" id="add-form">
+    <label for="add-input" class="sr-only">New ticket</label>
+    <textarea id="add-input" rows="1" placeholder="What needs doing?" autocomplete="off" enterkeyhint="done"></textarea>
+    <button type="button" id="mic" aria-label="Say it instead">🎤</button>
+    <button type="submit" class="go">Add ticket</button>
+  </form>
+  <div class="preview" id="preview" aria-live="polite"></div>
+  <nav class="bottom-nav" aria-label="Life OS"><a href="index.html">Today</a><a class="active" href="intray.html" aria-current="page">In-tray</a></nav>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="config.js"></script>

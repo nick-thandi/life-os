@@ -14,14 +14,21 @@
   const fmtMin = (m) => (!m ? "" : m % 60 === 0 ? m / 60 + " h" : m >= 60 ? Math.floor(m / 60) + " h " + (m % 60) + " min" : m + " min");
 
   function render() {
-    $.count.textContent = items.length ? items.length + " in the tray" : "In-tray is empty";
+    $.count.textContent = items.length ? items.length + (items.length === 1 ? " ticket" : " tickets") : "";
     $.list.innerHTML = "";
-    if (!items.length) { $.list.innerHTML = '<li class="empty">Nothing waiting. Add something above or say it.</li>'; return; }
+    if (!items.length) {
+      const cleared = sessionStorage.getItem("lifeos.intray.hadItems") === "1";
+      $.list.innerHTML = cleared
+        ? '<li class="state"><h3>All clear</h3><p>Everything in the tray is done or scheduled. Nothing else needed from you right now.</p></li>'
+        : '<li class="state"><h3>Nothing in the tray yet</h3><p>Type or say the first thing on your mind, with a priority if you know it: "Book the dentist, high, health, 10 min".</p></li>';
+      return;
+    }
+    try { sessionStorage.setItem("lifeos.intray.hadItems", "1"); } catch (e) { /* ignore */ }
     for (const t of items) {
       const li = document.createElement("li");
       li.className = "ticket p-" + (t.priority || "none");
       li.innerHTML =
-        '<button class="done" title="Done" aria-label="Done">✓</button>' +
+        '<button class="done" aria-label="Mark done: ' + esc(t.title) + '">✓</button>' +
         '<div class="body"><div class="title">' + esc(t.title) + "</div>" +
         '<div class="meta">' +
         (t.priority ? '<span class="pill pr">' + esc(t.priority) + "</span>" : '<span class="pill pr unset">no priority</span>') +
