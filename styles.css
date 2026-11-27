@@ -79,15 +79,16 @@ button { cursor: pointer; }
 .card h2 { margin: 0; font-size: var(--fs-h3); font-weight: 650; }
 .card .count { color: var(--ink-3); font-size: var(--fs-caption); }
 .card ul { list-style: none; margin: 0; padding: 0; }
-.ev { display: grid; grid-template-columns: 7.4em 1fr; gap: var(--space-2); padding: var(--space-2) 0; border-top: 1px solid var(--line); min-height: var(--tap); align-items: center; }
+/* Event rows: one size, two inks. Past is muted; the current one is bold with a "Now" badge. */
+.ev { display: grid; grid-template-columns: 6.25rem 1fr; column-gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--line); align-items: baseline; }
 .ev:first-child { border-top: 0; }
-.ev .time { color: var(--ink-2); font-size: var(--fs-caption); line-height: 1.5; }
-.ev .loc { color: var(--ink-3); }
-.ev.now .time, .ev.now .title { color: var(--time); font-weight: 650; }
-.ev.done { color: var(--ink-3); }
-.ev.done .title { text-decoration: line-through; text-decoration-color: var(--line); }
-.ev.routine { font-size: var(--fs-caption); }
-.ev.allday .time { color: var(--ink-2); font-size: var(--fs-caption); }
+.ev .time { color: var(--ink-2); font-size: var(--fs-caption); white-space: nowrap; }
+.ev .what { display: block; min-width: 0; }
+.ev .title { display: block; color: var(--ink); line-height: 1.35; }
+.ev .sup { display: block; color: var(--ink-2); font-size: var(--fs-caption); line-height: 1.4; margin-top: 2px; }
+.ev.done .title, .ev.done .time, .ev.done .sup { color: var(--ink-3); }
+.ev.now .title { font-weight: 650; }
+.badge { display: inline-block; font-size: 12px; font-weight: 650; line-height: 1; padding: 3px 7px; border-radius: var(--radius-pill); background: var(--time); color: var(--time-ink); vertical-align: 2px; margin-left: 4px; }
 .empty { color: var(--ink-3); padding: var(--space-2) 0; }
 
 /* Sign-in gate */
@@ -154,11 +155,14 @@ button { cursor: pointer; }
 .state p { margin: 0; color: var(--ink-2); }
 
 /* TV: same system, bigger, five columns, no chrome, no scrolling */
-body.tv { max-width: none; padding: var(--space-6) var(--space-7); overflow: hidden; --fs-body: 24px; --fs-caption: 19px; --fs-h3: 28px; --fs-h1: 44px; --fs-clock: 88px; --tap: 48px; }
+body.tv { max-width: none; padding: var(--space-6) var(--space-7); overflow: hidden; --fs-body: 23px; --fs-caption: 18px; --fs-h3: 28px; --fs-h1: 44px; --fs-clock: 88px; --tap: 48px; }
 body.tv .day-strip, body.tv .bottom-nav, body.tv .top .status button { display: none; }
 body.tv .board { grid-template-columns: repeat(5, 1fr); align-items: start; gap: var(--space-4); }
 body.tv .card { padding: var(--space-5); }
-body.tv .ev { grid-template-columns: 7em 1fr; }
+body.tv .ev { grid-template-columns: 1fr; row-gap: 2px; padding: var(--space-2) 0; }
+body.tv .ev.done { display: none; } /* the TV shows what is left of the day */
+body.tv .now-banner { grid-template-columns: 1fr 1fr; padding: var(--space-3) var(--space-5); }
+body.tv .badge { font-size: 16px; }
 @media (max-width: 1400px) { body.tv .board { grid-template-columns: repeat(3, 1fr); } }
 
 /* Activity */
@@ -182,5 +186,3 @@ body.tv .ev { grid-template-columns: 7em 1fr; }
 .view-switch button { min-height: 36px; min-width: 88px; border: 0; background: transparent; color: var(--ink-2); border-radius: var(--radius-pill); padding: 0 var(--space-4); font-weight: 500; }
 .view-switch button.active { background: var(--ink); color: var(--bg); font-weight: 650; }
 .card.me { border-left-color: var(--dad); }
-.ev .src { color: var(--ink-3); font-size: var(--fs-caption); }
-.ev.own .title::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--dad); margin-right: 6px; vertical-align: middle; }

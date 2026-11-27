@@ -64,6 +64,7 @@
     const j = await res.json();
     token = { access_token: j.access_token, expires_at: Date.now() + (Number(j.expires_in) || 3600) * 1000 };
     whoCache = j.email || null;
+    try { localStorage.setItem('lifeos.label', j.label || ''); } catch (e) {}
     saveToken(token);
     return true;
   }
@@ -201,5 +202,6 @@
     } catch (e) { return ""; }
   }
 
-  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, hasSession, eventsForDay, ownEventsForDay, accessToken, dropToken, who };
+  function label() { try { return localStorage.getItem('lifeos.label') || ''; } catch (e) { return ''; } }
+  window.LifeOSData = { label, mode, signIn, signInSilently, signOut, isSignedIn, hasSession, eventsForDay, ownEventsForDay, accessToken, dropToken, who };
 })();

@@ -51,35 +51,51 @@
   function titleLower(e) {
     return e.title.trim().toLowerCase();
   }
-  function personFor(e) {
-    const t = titleLower(e);
-    for (const p of cfg.people) {
-      for (const pre of p.prefixes) {
-        if (t.startsWith(pre + ":") || t.startsWith(pre + " -") || t.startsWith(pre + " today") || t === pre) return p.id;
-      }
-    }
-    return "family";
+  function personId(name) {
+    const n = name.trim().toLowerCase();
+    for (const p of cfg.people) if (p.prefixes.includes(n)) return p.id;
+    return null;
   }
-  // Everyone an event belongs to: the prefixed person, plus anyone named as "with X", "+ X", "and X".
-  function peopleFor(e) {
-    const t = titleLower(e);
-    const ids = [personFor(e)];
+  // Splits "Mum and Dad: date night (bring coats)" into who, what and a detail.
+  function parse(e) {
+    if (e._p) return e._p;
+    let t = e.title.trim(), ids = [], routine = false;
+    const m = t.match(/^([^:]{1,24}):\s*(.+)$/);
+    if (m) {
+      const head = m[1].trim();
+      if (cfg.routinePrefixes.includes(head.toLowerCase())) { routine = true; t = m[2]; }
+      else {
+        const parts = head.split(/\s*(?:,|&|\+|\band\b)\s*/i).map(personId);
+        if (parts.length && parts.every(Boolean)) { ids = parts; t = m[2]; }
+        else if (head.toLowerCase() === "family") { t = m[2]; }
+      }
+    } else if (cfg.routinePrefixes.some((r) => t.toLowerCase().startsWith(r))) routine = true;
+    // Others named in the text: "with Dad", "+ Pooks".
     for (const p of cfg.people) {
       if (ids.includes(p.id)) continue;
-      for (const pre of p.prefixes) {
-        if (new RegExp("(with|\\+|and|&)\\s+" + pre + "(\\b|'s)", "i").test(t)) { ids.push(p.id); break; }
-      }
+      if (ids.length && p.prefixes.some((pre) => new RegExp("(with|\\+|and|&)\\s+" + pre + "(\\b|'s)", "i").test(t))) ids.push(p.id);
     }
-    return ids;
+    let detail = "";
+    const d = t.match(/^(.*?)\s*\((.+)\)\s*$/);
+    if (d && d[1]) { t = d[1]; detail = d[2]; }
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+    detail = detail.charAt(0).toUpperCase() + detail.slice(1);
+    return (e._p = { ids: ids.length ? ids : ["family"], what: t, detail, routine });
   }
-  function isRoutine(e) {
-    const t = titleLower(e);
-    return cfg.routinePrefixes.some((p) => t.startsWith(p));
-  }
-  function stripPrefix(e) {
-    const t = e.title.trim();
-    const m = t.match(/^[^:]{1,12}:\s*(.+)$/);
-    return m ? m[1] : t;
+  const peopleFor = (e) => parse(e).ids;
+  const isRoutine = (e) => parse(e).routine;
+  const nameOf = (id) => (cfg.people.find((p) => p.id === id) || { name: "Family" }).name;
+  // One row, used by every card: time, title, optional supporting line.
+  function row(e, now, forId) {
+    const p = parse(e), st = state(e, now);
+    const others = p.ids.filter((id) => id !== forId && id !== "family").map(nameOf);
+    const sup = [forId === "all" && p.ids[0] !== "family" ? p.ids.map(nameOf).join(" and ") : (others.length ? "With " + others.join(" and ") : ""), p.detail, e.location].filter(Boolean).join(" · ");
+    const li = document.createElement("li");
+    li.className = "ev " + st;
+    li.innerHTML = '<span class="time">' + fmtSpan(e) + "</span>" +
+      '<span class="what"><span class="title">' + esc(p.what) + (st === "now" ? ' <span class="badge">Now</span>' : "") + "</span>" +
+      (sup ? '<span class="sup">' + esc(sup) + "</span>" : "") + "</span>";
+    return li;
   }
   function state(e, now) {
     if (e.allDay) return "allday";
@@ -117,15 +133,7 @@
       if (!list.length) {
         ul.innerHTML = '<li class="empty">' + (c.id === "family" ? "Nothing for everyone today" : "Nothing planned") + "</li>";
       }
-      for (const e of list) {
-        const li = document.createElement("li");
-        const st = state(e, now);
-        li.className = "ev " + st + (isRoutine(e) ? " routine" : "");
-        li.innerHTML =
-          '<span class="time">' + fmtSpan(e) + "</span>" +
-          '<span class="title">' + esc(stripPrefix(e)) + (e.location ? '<span class="loc"> · ' + esc(e.location) + "</span>" : "") + "</span>";
-        ul.appendChild(li);
-      }
+      for (const e of list) ul.appendChild(row(e, now, c.id));
       card.appendChild(ul);
       $.board.appendChild(card);
     }
@@ -140,7 +148,9 @@
 
   // "Me": one chronological day, family calendar plus my own calendar.
   function renderMe(now) {
-    const all = events.concat(ownEvents).sort((a, b) => (a.allDay === b.allDay ? a.start - b.start : a.allDay ? -1 : 1));
+    const me = personId(data.label() || "") || null;
+    const mine = me ? events.filter((e) => { const ids = peopleFor(e); return ids.includes(me) || ids[0] === "family"; }) : events;
+    const all = mine.concat(ownEvents).sort((a, b) => (a.allDay === b.allDay ? a.start - b.start : a.allDay ? -1 : 1));
     $.board.innerHTML = "";
     const card = document.createElement("section");
     card.className = "card me";
@@ -148,26 +158,10 @@
     card.innerHTML = '<header><h2>My day</h2><span class="count">' + (all.length ? (open ? open + " to go" : "All done") : "") + "</span></header>";
     const ul = document.createElement("ul");
     if (!all.length) ul.innerHTML = '<li class="empty">Nothing planned</li>';
-    for (const e of all) {
-      const li = document.createElement("li");
-      const st = state(e, now);
-      li.className = "ev " + st + (isRoutine(e) ? " routine" : "") + (e.own ? " own" : "");
-      li.innerHTML =
-        '<span class="time">' + fmtSpan(e) + "</span>" +
-        '<span class="title">' + esc(e.own ? e.title.replace(/^routine:\s*/i, "") : stripPrefixKeepOthers(e)) + (e.location ? '<span class="loc"> · ' + esc(e.location) + "</span>" : "") +
-        (e.own ? "" : '<span class="src"> · family</span>') + "</span>";
-      ul.appendChild(li);
-    }
+    for (const e of all) ul.appendChild(row(e, now, me || "all"));
     card.appendChild(ul);
     $.board.appendChild(card);
   }
-  // In the merged view keep other people's names so "Kini: karate" stays clear; drop only "Dad:".
-  function stripPrefixKeepOthers(e) {
-    const t = e.title.trim();
-    const m = t.match(/^(dad|nick)\s*:\s*(.+)$/i);
-    return m ? m[2] : t;
-  }
-
   function renderNowBanner(now) {
     if (!sameDay(viewDate, now)) {
       $.now.hidden = true;
