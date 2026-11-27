@@ -92,18 +92,34 @@ async function calendarContext(token: string, calendarId: string, days = 7) {
   return ((j.items || []) as any[]).map((e) => `${e.start?.dateTime || e.start?.date} → ${e.end?.dateTime || e.end?.date}: ${e.summary || ""}`);
 }
 
+// Strict JSON extraction: the outermost object, parsed whole, or an error (never a silent empty list).
+function parseDecisions(text: string): { decisions: any[] } {
+  const start = text.indexOf("{"); const end = text.lastIndexOf("}");
+  if (start < 0 || end < start) throw new Error("no JSON in model reply");
+  const parsed = JSON.parse(text.slice(start, end + 1));
+  if (!Array.isArray(parsed.decisions)) throw new Error("model reply has no decisions array");
+  return parsed;
+}
+
 // ---------- Gmail (read-only) ----------
 type Mail = { id: string; threadId: string; from: string; subject: string; date: string; snippet: string; labels: string[] };
-async function listMail(token: string, sinceEpoch: number, max: number): Promise<Mail[]> {
+// Lists message ids since a time (paged), returns ids plus whether the listing was exhausted.
+async function listMailIds(token: string, sinceEpoch: number, maxTotal: number): Promise<{ ids: string[]; complete: boolean }> {
   const q = `after:${sinceEpoch} -category:promotions -category:social -category:forums -in:spam -in:trash`;
-  const list = await gapi(token, `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${max}&q=${encodeURIComponent(q)}`);
-  const out: Mail[] = [];
-  for (const m of (list.messages || []) as { id: string }[]) {
-    const msg = await gapi(token, `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`);
-    const h = (name: string) => ((msg.payload?.headers || []).find((x: any) => x.name.toLowerCase() === name) || {}).value || "";
-    out.push({ id: msg.id, threadId: msg.threadId, from: h("from"), subject: h("subject"), date: h("date"), snippet: msg.snippet || "", labels: msg.labelIds || [] });
+  const ids: string[] = [];
+  let pageToken = "";
+  while (ids.length < maxTotal) {
+    const page = await gapi(token, `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(100, maxTotal - ids.length)}&q=${encodeURIComponent(q)}${pageToken ? "&pageToken=" + pageToken : ""}`);
+    for (const m of (page.messages || []) as { id: string }[]) ids.push(m.id);
+    pageToken = page.nextPageToken || "";
+    if (!pageToken) return { ids, complete: true };
   }
-  return out;
+  return { ids, complete: false };
+}
+async function fetchMail(token: string, id: string): Promise<Mail> {
+  const msg = await gapi(token, `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`);
+  const h = (name: string) => ((msg.payload?.headers || []).find((x: any) => x.name.toLowerCase() === name) || {}).value || "";
+  return { id: msg.id, threadId: msg.threadId, from: h("from"), subject: h("subject"), date: h("date"), snippet: msg.snippet || "", labels: msg.labelIds || [] };
 }
 
 type MailDecision = {
@@ -123,18 +139,17 @@ async function decideMail(captures: Capture[], ctx: { now: string; account: Acco
 - "check": a dated thing worth a reminder but no work now: a renewal date, a term date, an event announced for a future date. Give check_date (YYYY-MM-DD) = the date to start acting, and a title like "Renewal check: ..." or "School: ...".
 - "ignore": newsletters, marketing, receipts for routine purchases, delivery updates, social notifications, security alerts the person has already seen, anything political or adult. When unsure, ignore; a missed email costs less than noise.
 Family: Dad (Nick), Mum (Sam), Kini (7, St Luke's school, karate, PQA), Pooks (3, Scraptoft nursery via Famly). Account: ${ctx.account.label} (${ctx.account.email}). Now: ${ctx.now}.
-Respond with JSON only: {"decisions":[{capture_id, action, title, priority, tag, minutes, check_date, reason}]}. Include every capture_id exactly once.`;
-  const user = captures.map((c) => `- capture_id ${c.id}: from ${JSON.stringify(c.payload?.from)} | subject ${JSON.stringify(c.payload?.subject)} | ${c.payload?.date} | ${JSON.stringify(c.payload?.snippet)}`).join("\n");
+Respond with JSON only, no prose: {"decisions":[...]}. For "ignore" write only {"capture_id":"...","action":"ignore"} with no reason. For ticket/check include title, priority, tag, minutes, check_date and a reason under 12 words. Include every capture_id exactly once.`;
+  const user = captures.map((c) => `- capture_id ${c.id}: from ${JSON.stringify(c.payload?.from)} | subject ${JSON.stringify(c.payload?.subject)} | ${c.payload?.date} | ${JSON.stringify(String(c.payload?.snippet || "").slice(0, 160))}`).join("\n");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-    body: JSON.stringify({ model, max_tokens: 3000, system, messages: [{ role: "user", content: user }] }),
+    body: JSON.stringify({ model, max_tokens: 8000, system, messages: [{ role: "user", content: user }] }),
   });
   const j = await res.json();
   if (!res.ok) throw new Error(`Claude: ${j.error?.message || res.status}`);
-  const text = (j.content || []).map((c: any) => c.text || "").join("");
-  const m = text.match(/\{[\s\S]*\}/);
-  const parsed = m ? JSON.parse(m[0]) : { decisions: [] };
+  if (j.stop_reason === "max_tokens") throw new Error("Claude reply truncated (mail)");
+  const parsed = parseDecisions((j.content || []).map((c: any) => c.text || "").join(""));
   return { decisions: (parsed.decisions || []) as MailDecision[], usage: j.usage || {} };
 }
 
@@ -194,13 +209,12 @@ Respond with JSON only: {"decisions":[{capture_id, action, title, priority, tag,
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-    body: JSON.stringify({ model, max_tokens: 2000, system, messages: [{ role: "user", content: user }] }),
+    body: JSON.stringify({ model, max_tokens: 6000, system, messages: [{ role: "user", content: user }] }),
   });
   const j = await res.json();
   if (!res.ok) throw new Error(`Claude: ${j.error?.message || res.status}`);
-  const text = (j.content || []).map((c: any) => c.text || "").join("");
-  const m = text.match(/\{[\s\S]*\}/);
-  const parsed = m ? JSON.parse(m[0]) : { decisions: [] };
+  if (j.stop_reason === "max_tokens") throw new Error("Claude reply truncated (tasks)");
+  const parsed = parseDecisions((j.content || []).map((c: any) => c.text || "").join(""));
   return { decisions: (parsed.decisions || []) as Decision[], usage: j.usage || {} };
 }
 
@@ -300,7 +314,8 @@ Deno.serve(async (req) => {
 
           // 3. Apply.
           for (const cap of batch) {
-            const d = decisions.find((x) => x.capture_id === cap.id) || { capture_id: cap.id, action: "ask", reason: "no decision returned" } as Decision;
+            const d = decisions.find((x) => x.capture_id === cap.id);
+            if (!d) { errors.push(`${account.email}/${cap.id}: no decision (will retry)`); continue; }
             try {
               await applyDecision(sb, token, account, cap, d, autonomy, familyCalendar);
               stats.actions_taken++;
@@ -322,22 +337,32 @@ Deno.serve(async (req) => {
         const lookback = Number(settings.sweep_lookback_days_first || 7);
         const since = account.last_sweep_at ? new Date(account.last_sweep_at) : new Date(Date.now() - lookback * 86400000);
         const sweepStarted = new Date();
-        const mails = await listMail(token, Math.floor(since.getTime() / 1000) - 300, Number(settings.sweep_max_per_run || 40));
-        const newCaps: Capture[] = [];
-        for (const m of mails) {
-          const { data: ins } = await sb.from("captures").upsert(
+        const { ids, complete } = await listMailIds(token, Math.floor(since.getTime() / 1000) - 300, Number(settings.sweep_max_per_run || 40) * 3);
+        // Only download emails we have not seen before.
+        const { data: known } = ids.length ? await sb.from("captures").select("external_id").eq("account_id", account.id).eq("source", "gmail").in("external_id", ids) : { data: [] };
+        const knownSet = new Set((known || []).map((k: any) => k.external_id));
+        for (const id of ids.filter((x) => !knownSet.has(x))) {
+          const m = await fetchMail(token, id);
+          await sb.from("captures").upsert(
             { account_id: account.id, source: "gmail", external_id: m.id, text: `${m.from} — ${m.subject}`, payload: m },
             { onConflict: "account_id,source,external_id", ignoreDuplicates: true },
-          ).select();
-          if (ins?.[0]) newCaps.push(ins[0] as Capture);
+          );
         }
-        stats.captures_seen += newCaps.length;
-        if (newCaps.length) {
+        // Everything not yet decided for this account (new plus retries), in batches of 20.
+        const { data: pendingMail } = await sb.from("captures").select("*").eq("account_id", account.id).eq("source", "gmail").is("processed_at", null).order("seen_at").limit(60);
+        const mailBatch = (pendingMail || []) as Capture[];
+        stats.captures_seen += mailBatch.length;
+        for (let i = 0; i < mailBatch.length; i += 20) {
+          const chunk = mailBatch.slice(i, i + 20);
           const now = new Date().toLocaleString("en-GB", { timeZone: tz, dateStyle: "full", timeStyle: "short" });
-          const { decisions, usage } = await decideMail(newCaps, { now, account }, model);
-          stats.model_calls++; stats.input_tokens += usage.input_tokens || 0; stats.output_tokens += usage.output_tokens || 0;
-          for (const cap of newCaps) {
-            const d = decisions.find((x) => x.capture_id === cap.id) || { capture_id: cap.id, action: "ignore", reason: "no decision" } as MailDecision;
+          let decisions: MailDecision[] = [];
+          try {
+            const r = await decideMail(chunk, { now, account }, model);
+            decisions = r.decisions; stats.model_calls++; stats.input_tokens += r.usage.input_tokens || 0; stats.output_tokens += r.usage.output_tokens || 0;
+          } catch (e) { errors.push(`${account.email}/mail batch: ${(e as Error).message}`); continue; }
+          for (const cap of chunk) {
+            const d = decisions.find((x) => x.capture_id === cap.id);
+            if (!d || !["ticket", "check", "ignore"].includes(d.action)) { errors.push(`${account.email}/mail ${cap.id}: no decision (will retry)`); continue; }
             try {
               await applyMail(sb, token, account, cap, d, autonomy, familyCalendar);
               if (d.action !== "ignore") stats.actions_taken++;
@@ -345,9 +370,8 @@ Deno.serve(async (req) => {
             } catch (e) { errors.push(`${account.email}/mail ${cap.id}: ${(e as Error).message}`); }
           }
         }
-        // Only advance the sweep marker if we got everything (fewer than the cap).
-        if (mails.length < Number(settings.sweep_max_per_run || 40)) await sb.from("accounts").update({ last_sweep_at: sweepStarted.toISOString() }).eq("id", account.id);
-        else await sb.from("accounts").update({ last_sweep_at: new Date(Math.max(...mails.map((m) => new Date(m.date).getTime() || 0), since.getTime())).toISOString() }).eq("id", account.id);
+        // Advance the sweep marker only when the listing was complete; otherwise next run continues from the same point (already-seen ids are skipped cheaply).
+        if (complete) await sb.from("accounts").update({ last_sweep_at: sweepStarted.toISOString() }).eq("id", account.id);
       } catch (e) {
         errors.push(`${account.email}/sweep: ${(e as Error).message}`);
       }
