@@ -19,3 +19,12 @@ Project `life-os`, region London (eu-west-2), free plan. Deployed from this fold
 ## Connect an account
 `https://<project>.supabase.co/functions/v1/google-connect?label=dad|mum|family`
 Google Cloud client needs the redirect URI `https://<project>.supabase.co/functions/v1/google-connect/callback`, and the consent screen must be *In production* (unverified is fine) or tokens expire weekly.
+
+## Outlook sweep (daily)
+Nick's old Outlook account is not connected to the brain: a personal Microsoft account cannot register an app without an Azure directory. Instead a scheduled Claude task ("Life OS Outlook sweep", daily 04:43 UK) reads the Outlook inbox through the Microsoft 365 connector (sender, subject, date and the short preview; never full emails), decides ticket or ignore, and submits tickets only.
+- `outlook_state()`: where the last sweep ended.
+- `outlook_submit(items jsonb, swept_until timestamptz)`: sets a one-time nonce and posts to `functions/outlook-file`; returns a request id.
+- `outlook_result(request_id)`: the function's response.
+- `functions/outlook-file`: dedupes against `outlook_seen`, adds tickets to the Tickets list of `settings.outlook_target_email`, logs each in `actions` with undo, and moves `settings.outlook_last_sweep_at` only when every ticket landed.
+- Table `outlook_seen` (RLS, deny-all). The three SQL functions are not executable by `anon` or `authenticated`.
+Nothing is ever sent, moved, labelled or deleted in Outlook.
