@@ -7,10 +7,14 @@
     if (!token) throw new Error("not signed in");
     const res = await fetch(cfg.brainUrl + "/activity", {
       method, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
+      body: body && method !== "GET" ? JSON.stringify(body) : undefined,
     });
     const j = await res.json().catch(() => ({}));
-    if (res.status === 401) { window.LifeOSData.dropToken(); throw new Error("not signed in"); }
+    if (res.status === 401) {
+      window.LifeOSData.dropToken();
+      if (!body?._retried && await window.LifeOSData.signInSilently()) return call(method, Object.assign({}, body || {}, { _retried: true }));
+      throw new Error("not signed in");
+    }
     if (!res.ok) throw new Error(j.error || ("Brain said " + res.status));
     return j;
   }

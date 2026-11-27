@@ -38,7 +38,6 @@
   $.signin.onclick = async () => { try { await data.signIn(); await load(); } catch (e) { $.gateMsg.textContent = "Sign-in did not complete: " + e.message; } };
   (async function start() {
     if (data.mode() !== "google") { gate(true, "Activity needs the Google sign-in."); $.signin.hidden = true; return; }
-    await new Promise((r) => { const t = setInterval(() => { if (window.google && google.accounts && google.accounts.oauth2) { clearInterval(t); r(); } }, 100); setTimeout(() => { clearInterval(t); r(); }, 8000); });
     const ok = await data.signInSilently();
     if (!ok) gate(true, "Sign in with your own Google account to see what the brain did.");
     await load();

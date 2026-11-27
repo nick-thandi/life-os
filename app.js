@@ -235,8 +235,8 @@
       showGate(true, "Signed out.");
     };
 
+    if (window.__lifeosSignInError) showGate(true, "Sign-in did not complete: " + window.__lifeosSignInError);
     if (data.mode() === "google") {
-      await waitForGoogle();
       const ok = await data.signInSilently();
       if (!ok) {
         showGate(true, "Sign in with Google (your own account on your phone, the family account on the TV) to see today.");

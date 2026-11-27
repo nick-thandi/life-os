@@ -38,6 +38,7 @@
     });
     if (res.status === 401) {
       window.LifeOSData.dropToken();
+      if (!opts._retried && await window.LifeOSData.signInSilently()) return api(path, Object.assign({}, opts, { _retried: true }));
       throw new Error("not signed in");
     }
     if (!res.ok) {

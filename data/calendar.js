@@ -15,11 +15,28 @@
 
 (function () {
   const cfg = window.LIFE_OS_CONFIG;
-  const TOKEN_KEY = "lifeos.google.token.v2";
-  const SCOPE = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/userinfo.email";
+  const TOKEN_KEY = "lifeos.google.token.v3";
+  const SESSION_KEY = "lifeos.session";
 
-  let tokenClient = null;
   let token = loadToken();
+  let whoCache = null;
+  let session = null;
+  try { session = localStorage.getItem(SESSION_KEY) || null; } catch (e) { session = null; }
+
+  // Returning from the sign-in page: the session arrives in the URL fragment.
+  (function pickUpSession() {
+    const h = window.location.hash || "";
+    const m = h.match(/lifeos_session=([a-f0-9]+)/);
+    const err = h.match(/lifeos_error=([^&]+)/);
+    if (m) {
+      session = m[1];
+      try { localStorage.setItem(SESSION_KEY, session); } catch (e) { /* memory only */ }
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    } else if (err) {
+      window.__lifeosSignInError = decodeURIComponent(err[1]);
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  })();
 
   function loadToken() {
     try {
@@ -28,86 +45,48 @@
       const t = JSON.parse(raw);
       if (!t.access_token || !t.expires_at || t.expires_at < Date.now() + 60000) return null;
       return t;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
-
   function saveToken(t) {
-    try {
-      if (t) localStorage.setItem(TOKEN_KEY, JSON.stringify(t));
-      else localStorage.removeItem(TOKEN_KEY);
-    } catch (e) {
-      /* storage unavailable: token lives in memory only */
-    }
+    try { if (t) localStorage.setItem(TOKEN_KEY, JSON.stringify(t)); else localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignore */ }
   }
 
-  function mode() {
-    return cfg.googleClientId ? "google" : "demo";
+  function mode() { return cfg.googleClientId ? "google" : "demo"; }
+  function isSignedIn() { return mode() === "demo" ? true : !!(token && token.expires_at > Date.now() + 60000); }
+  function hasSession() { return mode() === "demo" || !!session; }
+
+  // Ask the brain's server for a short-lived Google token for this device's session.
+  async function fetchToken() {
+    if (!session) return false;
+    const res = await fetch(cfg.brainUrl + "/app-login/token", { method: "POST", headers: { Authorization: "Bearer " + session } });
+    if (res.status === 401) { session = null; try { localStorage.removeItem(SESSION_KEY); } catch (e) {} return false; }
+    if (!res.ok) throw new Error("Sign-in server said " + res.status);
+    const j = await res.json();
+    token = { access_token: j.access_token, expires_at: Date.now() + (Number(j.expires_in) || 3600) * 1000 };
+    whoCache = j.email || null;
+    saveToken(token);
+    return true;
   }
 
-  function isSignedIn() {
-    return mode() === "demo" ? true : !!(token && token.expires_at > Date.now() + 60000);
-  }
-
-  function ensureTokenClient() {
-    if (tokenClient) return tokenClient;
-    if (!window.google || !google.accounts || !google.accounts.oauth2) {
-      throw new Error("Google's sign-in script did not load (blocked or offline); reload the page");
-    }
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: cfg.googleClientId,
-      scope: SCOPE,
-      callback: () => {},
-    });
-    return tokenClient;
-  }
-
-  function requestToken(prompt) {
-    return new Promise((resolve, reject) => {
-      const client = ensureTokenClient();
-      client.callback = (resp) => {
-        if (resp.error) return reject(new Error(resp.error));
-        token = {
-          access_token: resp.access_token,
-          expires_at: Date.now() + (Number(resp.expires_in) || 3600) * 1000,
-        };
-        saveToken(token);
-        resolve();
-      };
-      client.error_callback = (err) => {
-        const t = err && err.type;
-        const msg = t === "popup_failed_to_open" ? "the sign-in pop-up was blocked; allow pop-ups for this site in the browser settings"
-          : t === "popup_closed" ? "the sign-in window was closed before finishing"
-          : t || "sign-in failed";
-        reject(new Error(msg));
-      };
-      client.requestAccessToken({ prompt });
-    });
-  }
-
+  // Interactive sign-in: leave for Google, come back with a session.
   async function signIn() {
     if (mode() === "demo") return;
-    await requestToken("consent");
+    const here = window.location.href.split("#")[0];
+    window.location.assign(cfg.brainUrl + "/app-login?return=" + encodeURIComponent(here));
+    await new Promise(() => {}); // navigation takes over
   }
 
   async function signInSilently() {
     if (mode() === "demo") return true;
     if (isSignedIn()) return true;
-    try {
-      await requestToken("");
-      return true;
-    } catch (e) {
-      return false;
-    }
+    try { return await fetchToken(); } catch (e) { return false; }
   }
 
   function signOut() {
-    if (token && window.google && google.accounts && google.accounts.oauth2) {
-      try { google.accounts.oauth2.revoke(token.access_token, () => {}); } catch (e) { /* ignore */ }
-    }
-    token = null;
+    if (session) fetch(cfg.brainUrl + "/app-login/logout", { method: "POST", headers: { Authorization: "Bearer " + session } }).catch(() => {});
+    session = null; token = null; whoCache = null;
     saveToken(null);
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
   }
 
   function dayBounds(date) {
@@ -134,8 +113,8 @@
       params.toString();
     const res = await fetch(url, { headers: { Authorization: "Bearer " + token.access_token } });
     if (res.status === 401) {
-      token = null;
-      saveToken(null);
+      token = null; saveToken(null);
+      if (await signInSilently()) return googleEvents(date, calendarId);
       throw new Error("not signed in");
     }
     if (!res.ok) {
@@ -205,12 +184,10 @@
     return isSignedIn() && token ? token.access_token : null;
   }
   function dropToken() {
-    whoCache = null;
     token = null;
     saveToken(null);
   }
 
-  let whoCache = null;
   async function who() {
     if (mode() === "demo") return "demo";
     if (whoCache) return whoCache;
@@ -224,5 +201,5 @@
     } catch (e) { return ""; }
   }
 
-  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, eventsForDay, ownEventsForDay, accessToken, dropToken, who };
+  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, hasSession, eventsForDay, ownEventsForDay, accessToken, dropToken, who };
 })();

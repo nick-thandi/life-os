@@ -32,7 +32,7 @@ Until a client ID is set the app runs with made-up demo data, so it can be opene
 3. **OAuth consent screen**: External, app name `Life OS`, your email as contact. Under *Audience / Test users* add every Google account that will sign in on a screen (the family account and any personal ones). Scope: `.../auth/calendar.readonly`. The app can stay in *Testing*; it does not need Google verification for your own use.
 4. **Create the client**: Credentials → Create credentials → OAuth client ID → *Web application*. Under **Authorised JavaScript origins** add the exact URL the app will be served from (see Hosting). No redirect URI is needed.
 5. Paste the client ID into `config.js` → `googleClientId` and commit.
-6. Open the app on each screen, press **Sign in with Google**, choose the family account. The sign-in is remembered per browser and refreshed silently.
+6. Open the app on each screen and press **Sign in with Google**. Sign-in is a redirect through the brain's `app-login` function (no pop-ups, so it works in installed apps and on TVs); the device gets a 180-day Life OS session and asks the server for short-lived Google tokens limited to calendar read, tasks and email. The Google client needs the redirect URI `https://<project>.supabase.co/functions/v1/app-login/callback`.
 
 ## Hosting
 

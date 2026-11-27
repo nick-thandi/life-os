@@ -133,7 +133,6 @@
 
   (async function start() {
     if (data.mode() !== "google") { gate(true, "The in-tray needs the Google sign-in; demo mode has no in-tray."); $.signin.hidden = true; return; }
-    await new Promise((r) => { const t = setInterval(() => { if (window.google && google.accounts && google.accounts.oauth2) { clearInterval(t); r(); } }, 100); setTimeout(() => { clearInterval(t); r(); }, 8000); });
     const ok = await data.signInSilently();
     if (!ok) gate(true, "Sign in with your own Google account (or the family account on the TV) to see your in-tray.");
     await load();
