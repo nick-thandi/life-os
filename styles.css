@@ -210,3 +210,12 @@ body.tv .card-head .summary { display: none; }
 details.hint summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; }
 .add button.go { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .gate button, .btn-primary { background: var(--ink); color: var(--bg); }
+
+/* In-tray capture bar: the text box gets its own row; mic and Add ticket sit underneath */
+.add { grid-template-columns: var(--tap) 1fr; align-items: stretch; }
+.add textarea { grid-column: 1 / -1; width: 100%; }
+.add button.go { width: 100%; }
+@media (max-width: 767px) {
+  body:has(.add) { padding-bottom: calc(var(--tap) * 3 + var(--space-7) + env(safe-area-inset-bottom)); }
+  .preview { bottom: calc(var(--tap) * 3 + var(--space-6) + var(--space-2) + env(safe-area-inset-bottom)); }
+}
