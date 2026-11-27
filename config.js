@@ -13,11 +13,15 @@ window.LIFE_OS_CONFIG = {
   // event title, e.g. "Dad: off work" or "Kini - karate". Anything that does
   // not match a person is shown under "Family".
   people: [
-    { id: "dad",   name: "Dad",   prefixes: ["dad", "nick"] },
-    { id: "mum",   name: "Mum",   prefixes: ["mum", "sam"] },
-    { id: "kini",  name: "Kini",  prefixes: ["kini"] },
-    { id: "pooks", name: "Pooks", prefixes: ["pooks"] },
+    { id: "dad",   name: "Dad",   prefixes: ["dad", "nick"], avatar: "🦁", calendar: "nickthandi7@gmail.com" },
+    { id: "mum",   name: "Mum",   prefixes: ["mum", "sam"],  avatar: "🦊", calendar: "" },
+    { id: "kini",  name: "Kini",  prefixes: ["kini", "mia"], avatar: "🐼" },
+    { id: "pooks", name: "Pooks", prefixes: ["pooks"],       avatar: "🐥" },
   ],
+  familyAvatar: "🏡",
+  // Words that mean several people at once, e.g. "Routine: kids' bath".
+  groups: { kids: ["kini", "pooks"], children: ["kini", "pooks"] },
+
 
   // Event titles starting with any of these are treated as routine and are
   // shown smaller (they still appear, nothing is hidden).

@@ -22,7 +22,6 @@
   let events = [];      // family calendar
   let ownEvents = [];   // signed-in person's own calendar
   let view = (!tv && localStorage.getItem("lifeos.view")) || "family"; // "me" | "family"
-  const canMe = !tv;
   let refreshTimer = null;
 
   // ---------- helpers ----------
@@ -75,6 +74,11 @@
       if (ids.includes(p.id)) continue;
       if (ids.length && p.prefixes.some((pre) => new RegExp("(with|\\+|and|&)\\s+" + pre + "(\\b|'s)", "i").test(t))) ids.push(p.id);
     }
+    if (!ids.length) {
+      const g = Object.keys(cfg.groups || {}).find((k) => new RegExp("^" + k + "\\b", "i").test(t));
+      if (g) ids = cfg.groups[g].slice();
+      else if (e.owner) ids = [e.owner];
+    }
     let detail = "";
     const d = t.match(/^(.*?)\s*\((.+)\)\s*$/);
     if (d && d[1]) { t = d[1]; detail = d[2]; }
@@ -85,16 +89,21 @@
   const peopleFor = (e) => parse(e).ids;
   const isRoutine = (e) => parse(e).routine;
   const nameOf = (id) => (cfg.people.find((p) => p.id === id) || { name: "Family" }).name;
-  // One row, used by every card: time, title, optional supporting line.
+  const avatarOf = (id) => (cfg.people.find((p) => p.id === id) || { avatar: cfg.familyAvatar || "" }).avatar || "";
+  function avatars(ids) {
+    return '<span class="who" aria-label="' + esc(ids.map(nameOf).join(" and ")) + '">' + ids.map((id) => '<span class="av av-' + id + '" title="' + esc(nameOf(id)) + '">' + avatarOf(id) + "</span>").join("") + "</span>";
+  }
+  // One row, used by every card: time, title, optional supporting line, and who is involved.
   function row(e, now, forId) {
     const p = parse(e), st = state(e, now);
-    const others = p.ids.filter((id) => id !== forId && id !== "family").map(nameOf);
-    const sup = [forId === "all" && p.ids[0] !== "family" ? p.ids.map(nameOf).join(" and ") : (others.length ? "With " + others.join(" and ") : ""), p.detail, e.location].filter(Boolean).join(" · ");
+    const sup = [p.detail, e.location].filter(Boolean).join(" · ");
+    const showWho = forId === "all" ? true : p.ids.length > 1;
     const li = document.createElement("li");
     li.className = "ev " + st;
     li.innerHTML = '<span class="time">' + fmtSpan(e) + "</span>" +
       '<span class="what"><span class="title">' + esc(p.what) + (st === "now" ? ' <span class="badge">Now</span>' : "") + "</span>" +
-      (sup ? '<span class="sup">' + esc(sup) + "</span>" : "") + "</span>";
+      (sup ? '<span class="sup">' + esc(sup) + "</span>" : "") + "</span>" +
+      (showWho ? avatars(p.ids) : "");
     return li;
   }
   function state(e, now) {
@@ -105,69 +114,78 @@
   }
 
   // ---------- rendering ----------
+  const sortEv = (a, b) => (a.allDay === b.allDay ? a.start - b.start : a.allDay ? -1 : 1);
+  const meId = () => personId(data.label() || "");
+  const expanded = new Set();
+  const wide = () => tv || window.matchMedia("(min-width: 768px)").matches;
+
+  function everything() { return events.concat(ownEvents).sort(sortEv); }
+  function mineOnly() { const me = meId(); return everything().filter((e) => { const ids = peopleFor(e); return ids.includes(me) || ids[0] === "family"; }); }
+  function summary(list, now) {
+    const cur = list.find((e) => state(e, now) === "now");
+    if (cur) return "Now: " + parse(cur).what;
+    const next = list.filter((e) => !e.allDay && e.start > now)[0];
+    if (next) return "Next " + fmtTime(next.start) + ": " + parse(next).what;
+    return list.length ? "All done for today" : "Nothing planned";
+  }
+
   function render() {
     const now = new Date();
-    $.date.textContent = fmtDate(viewDate) + (sameDay(viewDate, now) ? "" : "");
+    $.date.textContent = fmtDate(viewDate);
     $.clock.textContent = fmtTime(now);
-
+    if (!meId() && view === "me") view = "family";
     renderDayStrip();
     renderNowBanner(now);
     renderViewSwitch();
+    $.board.innerHTML = "";
+    $.board.className = "board view-" + view;
 
-    if (view === "me") { renderMe(now); return; }
-
+    if (view === "me") {
+      const me = meId(), list = mineOnly();
+      $.board.appendChild(card({ id: me, name: nameOf(me) + "'s day" }, list, now, true));
+      return;
+    }
     const groups = { family: [] };
     cfg.people.forEach((p) => (groups[p.id] = []));
-    events.forEach((e) => peopleFor(e).forEach((id) => groups[id].push(e)));
+    everything().forEach((e) => peopleFor(e).forEach((id) => groups[id].push(e)));
+    const cards = [{ id: "family", name: "Everyone" }].concat(cfg.people);
+    for (const c of cards) { if (c.id === "family" && !groups.family.length) continue; $.board.appendChild(card(c, groups[c.id], now, wide() || expanded.has(c.id))); }
+  }
 
-    const cards = [{ id: "family", name: "Family" }].concat(cfg.people);
-    $.board.innerHTML = "";
-    for (const c of cards) {
-      const list = groups[c.id];
-      const card = document.createElement("section");
-      card.className = "card person-" + c.id;
-      const open = list.filter((e) => state(e, now) !== "done").length;
-      card.innerHTML =
-        '<header><h2>' + esc(c.name) + '</h2><span class="count">' + (list.length ? (open ? open + " to go" : "All done") : "") + "</span></header>";
+  function card(c, list, now, open) {
+    const el = document.createElement("section");
+    el.className = "card person-" + c.id + (open ? " open" : "");
+    const left = list.filter((e) => state(e, now) !== "done").length;
+    const head = document.createElement(wide() || view === "me" ? "div" : "button");
+    head.className = "card-head";
+    if (head.tagName === "BUTTON") { head.setAttribute("aria-expanded", String(open)); head.onclick = () => { expanded.has(c.id) ? expanded.delete(c.id) : expanded.add(c.id); render(); }; }
+    head.innerHTML = '<span class="av av-lg av-' + c.id + '">' + avatarOf(c.id) + "</span>" +
+      '<span class="head-text"><span class="name">' + esc(c.name) + '</span><span class="summary">' + esc(summary(list, now)) + "</span></span>" +
+      '<span class="count">' + (list.length ? (left ? left + " to go" : "Done") : "") + "</span>" +
+      (head.tagName === "BUTTON" ? '<span class="chev" aria-hidden="true"></span>' : "");
+    el.appendChild(head);
+    if (open) {
       const ul = document.createElement("ul");
-      if (!list.length) {
-        ul.innerHTML = '<li class="empty">' + (c.id === "family" ? "Nothing for everyone today" : "Nothing planned") + "</li>";
-      }
-      for (const e of list) ul.appendChild(row(e, now, c.id));
-      card.appendChild(ul);
-      $.board.appendChild(card);
+      if (!list.length) ul.innerHTML = '<li class="empty">Nothing planned</li>';
+      for (const e of list) ul.appendChild(row(e, now, view === "me" ? c.id : c.id));
+      el.appendChild(ul);
     }
+    return el;
   }
 
   function renderViewSwitch() {
     const el = document.getElementById("view-switch");
-    if (!el || !canMe) return;
-    el.hidden = false;
+    if (!el || tv) return;
+    el.hidden = !meId();
     el.querySelectorAll("button").forEach((b) => { b.className = b.dataset.view === view ? "active" : ""; b.setAttribute("aria-pressed", String(b.dataset.view === view)); });
   }
 
-  // "Me": one chronological day, family calendar plus my own calendar.
-  function renderMe(now) {
-    const me = personId(data.label() || "") || null;
-    const mine = me ? events.filter((e) => { const ids = peopleFor(e); return ids.includes(me) || ids[0] === "family"; }) : events;
-    const all = mine.concat(ownEvents).sort((a, b) => (a.allDay === b.allDay ? a.start - b.start : a.allDay ? -1 : 1));
-    $.board.innerHTML = "";
-    const card = document.createElement("section");
-    card.className = "card me";
-    const open = all.filter((e) => state(e, now) !== "done").length;
-    card.innerHTML = '<header><h2>My day</h2><span class="count">' + (all.length ? (open ? open + " to go" : "All done") : "") + "</span></header>";
-    const ul = document.createElement("ul");
-    if (!all.length) ul.innerHTML = '<li class="empty">Nothing planned</li>';
-    for (const e of all) ul.appendChild(row(e, now, me || "all"));
-    card.appendChild(ul);
-    $.board.appendChild(card);
-  }
   function renderNowBanner(now) {
     if (!sameDay(viewDate, now)) {
       $.now.hidden = true;
       return;
     }
-    const pool = view === "me" ? events.concat(ownEvents) : events;
+    const pool = view === "me" ? mineOnly() : everything();
     const timed = pool.filter((e) => !e.allDay && !isRoutine(e));
     const current = timed.filter((e) => e.start <= now && e.end > now);
     const next = timed.filter((e) => e.start > now).sort((a, b) => a.start - b.start)[0];
@@ -209,7 +227,7 @@
   async function load() {
     try {
       $.status.textContent = "Updating…";
-      const [fam, own] = await Promise.all([data.eventsForDay(viewDate), canMe ? data.ownEventsForDay(viewDate) : Promise.resolve([])]);
+      const [fam, own] = await Promise.all([data.eventsForDay(viewDate), data.peopleEventsForDay(viewDate)]);
       events = fam; ownEvents = own;
       events.sort((a, b) => (a.allDay === b.allDay ? a.start - b.start : a.allDay ? -1 : 1));
       $.status.textContent = data.mode() === "demo" ? "Demo data" : "Updated " + fmtTime(new Date());

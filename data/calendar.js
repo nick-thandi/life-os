@@ -172,13 +172,14 @@
     return mode() === "demo" ? demoEvents(date) : googleEvents(date, cfg.calendarId);
   }
 
-  // The signed-in person's own calendar, when it is not the family one. Empty in demo mode.
-  async function ownEventsForDay(date) {
+  // Each person's own calendar, where this sign-in is allowed to read it (their own, or one shared with them).
+  async function peopleEventsForDay(date) {
     if (mode() === "demo") return [];
-    const me = await who();
-    if (!me || me.toLowerCase() === String(cfg.calendarId).toLowerCase()) return [];
-    try { return (await googleEvents(date, "primary")).map((e) => Object.assign(e, { own: true })); }
-    catch (e) { return []; }
+    const out = [];
+    await Promise.all((cfg.people || []).filter((p) => p.calendar && p.calendar.toLowerCase() !== String(cfg.calendarId).toLowerCase()).map(async (p) => {
+      try { (await googleEvents(date, p.calendar)).forEach((e) => out.push(Object.assign(e, { owner: p.id }))); } catch (e) { /* not shared with this account */ }
+    }));
+    return out;
   }
 
   function accessToken() {
@@ -203,5 +204,5 @@
   }
 
   function label() { try { return localStorage.getItem('lifeos.label') || ''; } catch (e) { return ''; } }
-  window.LifeOSData = { label, mode, signIn, signInSilently, signOut, isSignedIn, hasSession, eventsForDay, ownEventsForDay, accessToken, dropToken, who };
+  window.LifeOSData = { label, mode, signIn, signInSilently, signOut, isSignedIn, hasSession, eventsForDay, peopleEventsForDay, accessToken, dropToken, who };
 })();
