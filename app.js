@@ -53,6 +53,18 @@
     }
     return "family";
   }
+  // Everyone an event belongs to: the prefixed person, plus anyone named as "with X", "+ X", "and X".
+  function peopleFor(e) {
+    const t = titleLower(e);
+    const ids = [personFor(e)];
+    for (const p of cfg.people) {
+      if (ids.includes(p.id)) continue;
+      for (const pre of p.prefixes) {
+        if (new RegExp("(with|\\+|and|&)\\s+" + pre + "(\\b|'s)", "i").test(t)) { ids.push(p.id); break; }
+      }
+    }
+    return ids;
+  }
   function isRoutine(e) {
     const t = titleLower(e);
     return cfg.routinePrefixes.some((p) => t.startsWith(p));
@@ -83,7 +95,7 @@
 
     const groups = { family: [] };
     cfg.people.forEach((p) => (groups[p.id] = []));
-    events.forEach((e) => groups[personFor(e)].push(e));
+    events.forEach((e) => peopleFor(e).forEach((id) => groups[id].push(e)));
 
     const cards = [{ id: "family", name: "Family" }].concat(cfg.people);
     $.board.innerHTML = "";
