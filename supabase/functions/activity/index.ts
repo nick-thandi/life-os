@@ -90,6 +90,10 @@ Deno.serve(async (req) => {
       } else if (u.kind === "event_remove_and_task_reopen") {
         await gapi(token, `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(u.calendar_id)}/events/${u.event_id}`, { method: "DELETE" });
         await gapi(token, u.task_url, { method: "PATCH", body: JSON.stringify({ status: "needsAction", notes: u.task_notes }) });
+      } else if (u.kind === "task_complete") {
+        await gapi(token, u.url, { method: "PATCH", body: JSON.stringify({ status: "completed", notes: "Undone in Life OS (ticket withdrawn)" }) });
+      } else if (u.kind === "event_remove") {
+        await gapi(token, `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(u.calendar_id)}/events/${u.event_id}`, { method: "DELETE" });
       } else {
         return json(req, { error: "nothing to undo" }, 400);
       }

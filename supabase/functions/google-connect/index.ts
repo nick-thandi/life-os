@@ -16,6 +16,7 @@ const SCOPES = [
   "email",
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/tasks",
+  "https://www.googleapis.com/auth/gmail.readonly",
 ].join(" ");
 
 function html(body: string, status = 200) {
