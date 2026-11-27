@@ -19,7 +19,10 @@
   };
 
   let viewDate = startOfDay(new Date());
-  let events = [];
+  let events = [];      // family calendar
+  let ownEvents = [];   // signed-in person's own calendar
+  let view = (!tv && localStorage.getItem("lifeos.view")) || "family"; // "me" | "family"
+  const canMe = !tv;
   let refreshTimer = null;
 
   // ---------- helpers ----------
@@ -74,6 +77,9 @@
 
     renderDayStrip();
     renderNowBanner(now);
+    renderViewSwitch();
+
+    if (view === "me") { renderMe(now); return; }
 
     const groups = { family: [] };
     cfg.people.forEach((p) => (groups[p.id] = []));
@@ -106,12 +112,50 @@
     }
   }
 
+  function renderViewSwitch() {
+    const el = document.getElementById("view-switch");
+    if (!el || !canMe) return;
+    el.hidden = false;
+    el.querySelectorAll("button").forEach((b) => { b.className = b.dataset.view === view ? "active" : ""; b.setAttribute("aria-pressed", String(b.dataset.view === view)); });
+  }
+
+  // "Me": one chronological day, family calendar plus my own calendar.
+  function renderMe(now) {
+    const all = events.concat(ownEvents).sort((a, b) => (a.allDay === b.allDay ? a.start - b.start : a.allDay ? -1 : 1));
+    $.board.innerHTML = "";
+    const card = document.createElement("section");
+    card.className = "card me";
+    const open = all.filter((e) => state(e, now) !== "done").length;
+    card.innerHTML = '<header><h2>My day</h2><span class="count">' + (all.length ? (open ? open + " to go" : "All done") : "") + "</span></header>";
+    const ul = document.createElement("ul");
+    if (!all.length) ul.innerHTML = '<li class="empty">Nothing planned</li>';
+    for (const e of all) {
+      const li = document.createElement("li");
+      const st = state(e, now);
+      li.className = "ev " + st + (isRoutine(e) ? " routine" : "") + (e.own ? " own" : "");
+      li.innerHTML =
+        '<span class="time">' + (e.allDay ? "All day" : fmtTime(e.start)) + "</span>" +
+        '<span class="title">' + esc(e.own ? e.title.replace(/^routine:\s*/i, "") : stripPrefixKeepOthers(e)) + (e.location ? '<span class="loc"> · ' + esc(e.location) + "</span>" : "") +
+        (e.own ? "" : '<span class="src"> · family</span>') + "</span>";
+      ul.appendChild(li);
+    }
+    card.appendChild(ul);
+    $.board.appendChild(card);
+  }
+  // In the merged view keep other people's names so "Kini: karate" stays clear; drop only "Dad:".
+  function stripPrefixKeepOthers(e) {
+    const t = e.title.trim();
+    const m = t.match(/^(dad|nick)\s*:\s*(.+)$/i);
+    return m ? m[2] : t;
+  }
+
   function renderNowBanner(now) {
     if (!sameDay(viewDate, now)) {
       $.now.hidden = true;
       return;
     }
-    const timed = events.filter((e) => !e.allDay && !isRoutine(e));
+    const pool = view === "me" ? events.concat(ownEvents) : events;
+    const timed = pool.filter((e) => !e.allDay && !isRoutine(e));
     const current = timed.filter((e) => e.start <= now && e.end > now);
     const next = timed.filter((e) => e.start > now).sort((a, b) => a.start - b.start)[0];
     let html = "";
@@ -152,7 +196,8 @@
   async function load() {
     try {
       $.status.textContent = "Updating…";
-      events = await data.eventsForDay(viewDate);
+      const [fam, own] = await Promise.all([data.eventsForDay(viewDate), canMe ? data.ownEventsForDay(viewDate) : Promise.resolve([])]);
+      events = fam; ownEvents = own;
       events.sort((a, b) => (a.allDay === b.allDay ? a.start - b.start : a.allDay ? -1 : 1));
       $.status.textContent = data.mode() === "demo" ? "Demo data" : "Updated " + fmtTime(new Date());
       showGate(false);
@@ -175,6 +220,8 @@
   }
 
   async function start() {
+    const sw = document.getElementById("view-switch");
+    if (sw) sw.querySelectorAll("button").forEach((b) => (b.onclick = () => { view = b.dataset.view; try { localStorage.setItem("lifeos.view", view); } catch (e) {} render(); }));
     $.signin.onclick = async () => {
       try {
         await data.signIn();

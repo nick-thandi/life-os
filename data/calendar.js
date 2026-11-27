@@ -116,7 +116,7 @@
     return { start, end };
   }
 
-  async function googleEvents(date) {
+  async function googleEvents(date, calendarId) {
     if (!isSignedIn()) throw new Error("not signed in");
     const { start, end } = dayBounds(date);
     const params = new URLSearchParams({
@@ -129,7 +129,7 @@
     });
     const url =
       "https://www.googleapis.com/calendar/v3/calendars/" +
-      encodeURIComponent(cfg.calendarId) +
+      encodeURIComponent(calendarId || cfg.calendarId) +
       "/events?" +
       params.toString();
     const res = await fetch(url, { headers: { Authorization: "Bearer " + token.access_token } });
@@ -189,7 +189,16 @@
   }
 
   function eventsForDay(date) {
-    return mode() === "demo" ? demoEvents(date) : googleEvents(date);
+    return mode() === "demo" ? demoEvents(date) : googleEvents(date, cfg.calendarId);
+  }
+
+  // The signed-in person's own calendar, when it is not the family one. Empty in demo mode.
+  async function ownEventsForDay(date) {
+    if (mode() === "demo") return [];
+    const me = await who();
+    if (!me || me.toLowerCase() === String(cfg.calendarId).toLowerCase()) return [];
+    try { return (await googleEvents(date, "primary")).map((e) => Object.assign(e, { own: true })); }
+    catch (e) { return []; }
   }
 
   function accessToken() {
@@ -215,5 +224,5 @@
     } catch (e) { return ""; }
   }
 
-  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, eventsForDay, accessToken, dropToken, who };
+  window.LifeOSData = { mode, signIn, signInSilently, signOut, isSignedIn, eventsForDay, ownEventsForDay, accessToken, dropToken, who };
 })();

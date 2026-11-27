@@ -176,3 +176,11 @@ body.tv .ev { grid-template-columns: 4.4em 1fr; }
 .act .btns { display: flex; gap: var(--space-2); align-items: center; }
 .act button { min-height: 36px; border-radius: var(--radius-pill); padding: 0 var(--space-3); border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
 .act button.approve { background: var(--time); color: var(--time-ink); border-color: var(--time); font-weight: 650; }
+
+/* Me / Family switch */
+.view-switch { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 3px; margin-bottom: var(--space-3); }
+.view-switch button { min-height: 36px; min-width: 88px; border: 0; background: transparent; color: var(--ink-2); border-radius: var(--radius-pill); padding: 0 var(--space-4); font-weight: 500; }
+.view-switch button.active { background: var(--ink); color: var(--bg); font-weight: 650; }
+.card.me { border-left-color: var(--dad); }
+.ev .src { color: var(--ink-3); font-size: var(--fs-caption); }
+.ev.own .title::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--dad); margin-right: 6px; vertical-align: middle; }
