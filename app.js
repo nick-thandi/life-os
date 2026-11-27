@@ -35,6 +35,13 @@
   function fmtTime(d) {
     return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: cfg.timeZone });
   }
+  // "10:00–11:00"; a very short block (under 20 min) shows its start only.
+  function fmtSpan(e) {
+    if (e.allDay) return "All day";
+    const mins = (e.end - e.start) / 60000;
+    if (mins < 20) return fmtTime(e.start);
+    return fmtTime(e.start) + "–" + fmtTime(e.end);
+  }
   function fmtDate(d) {
     return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: cfg.timeZone });
   }
@@ -115,7 +122,7 @@
         const st = state(e, now);
         li.className = "ev " + st + (isRoutine(e) ? " routine" : "");
         li.innerHTML =
-          '<span class="time">' + (e.allDay ? "All day" : fmtTime(e.start)) + "</span>" +
+          '<span class="time">' + fmtSpan(e) + "</span>" +
           '<span class="title">' + esc(stripPrefix(e)) + (e.location ? '<span class="loc"> · ' + esc(e.location) + "</span>" : "") + "</span>";
         ul.appendChild(li);
       }
@@ -146,7 +153,7 @@
       const st = state(e, now);
       li.className = "ev " + st + (isRoutine(e) ? " routine" : "") + (e.own ? " own" : "");
       li.innerHTML =
-        '<span class="time">' + (e.allDay ? "All day" : fmtTime(e.start)) + "</span>" +
+        '<span class="time">' + fmtSpan(e) + "</span>" +
         '<span class="title">' + esc(e.own ? e.title.replace(/^routine:\s*/i, "") : stripPrefixKeepOthers(e)) + (e.location ? '<span class="loc"> · ' + esc(e.location) + "</span>" : "") +
         (e.own ? "" : '<span class="src"> · family</span>') + "</span>";
       ul.appendChild(li);
@@ -172,7 +179,7 @@
     const next = timed.filter((e) => e.start > now).sort((a, b) => a.start - b.start)[0];
     let html = "";
     if (current.length) {
-      html += '<div class="now"><span class="label">Now</span>' + current.map((e) => esc(e.title)).join(" · ") + "</div>";
+      html += '<div class="now"><span class="label">Now</span>' + current.map((e) => esc(e.title) + ' <span class="when">until ' + fmtTime(e.end) + "</span>").join(" · ") + "</div>";
     }
     if (next) {
       const mins = Math.round((next.start - now) / 60000);
