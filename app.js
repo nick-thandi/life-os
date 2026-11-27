@@ -21,7 +21,7 @@
   let viewDate = startOfDay(new Date());
   let events = [];      // family calendar
   let ownEvents = [];   // signed-in person's own calendar
-  let view = (!tv && localStorage.getItem("lifeos.view")) || "family"; // "me" | "family"
+  let view = "family"; // single view: every person is a card; tap your own for your day
   let refreshTimer = null;
 
   // ---------- helpers ----------
@@ -133,7 +133,6 @@
     const now = new Date();
     $.date.textContent = fmtDate(viewDate);
     $.clock.textContent = fmtTime(now);
-    if (!meId() && view === "me") view = "family";
     renderDayStrip();
     renderNowBanner(now);
     renderViewSwitch();
@@ -148,7 +147,9 @@
     const groups = { family: [] };
     cfg.people.forEach((p) => (groups[p.id] = []));
     everything().forEach((e) => peopleFor(e).forEach((id) => groups[id].push(e)));
-    const cards = [{ id: "family", name: "Everyone" }].concat(cfg.people);
+    const me = meId();
+    const cards = [{ id: "family", name: "Everyone" }].concat(cfg.people).sort((a, b) => (b.id === me) - (a.id === me));
+    if (me && !render.opened) { expanded.add(me); render.opened = true; }
     for (const c of cards) { if (c.id === "family" && !groups.family.length) continue; $.board.appendChild(card(c, groups[c.id], now, wide() || expanded.has(c.id))); }
   }
 
@@ -176,7 +177,7 @@
   function renderViewSwitch() {
     const el = document.getElementById("view-switch");
     if (!el || tv) return;
-    el.hidden = !meId();
+    el.hidden = true;
     el.querySelectorAll("button").forEach((b) => { b.className = b.dataset.view === view ? "active" : ""; b.setAttribute("aria-pressed", String(b.dataset.view === view)); });
   }
 
