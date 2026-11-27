@@ -65,9 +65,12 @@
       const n = norm(name);
       for (const l of items) if (norm(l.title) === n && !found.includes(l.id)) found.push(l.id);
     }
-    if (!found.length) {
-      const created = await api("/users/@me/lists", { method: "POST", body: { title: cfg.taskListNames ? cfg.taskListNames[0] : "In-tray" } });
-      found.push(created.id);
+    // The first configured name is the home list: create it if missing so new tickets never land in My Tasks.
+    const homeName = cfg.taskListNames ? cfg.taskListNames[0] : "Tickets";
+    const hasHome = items.some((l) => norm(l.title) === norm(homeName));
+    if (!hasHome) {
+      const created = await api("/users/@me/lists", { method: "POST", body: { title: homeName } });
+      found.unshift(created.id);
     }
     return (listIds = found);
   }

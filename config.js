@@ -29,6 +29,9 @@ window.LIFE_OS_CONFIG = {
   // voice assistants mishear "in-tray".
   taskListNames: ["Tickets", "Ticket", "My Tasks", "In-tray", "Inbox", "Entry"],
 
+  // The brain (Supabase). Public project URL; nothing secret.
+  brainUrl: "https://dxvzirwrgivwlfbvzcdp.supabase.co/functions/v1",
+
   // Refresh interval in minutes for the live view.
   refreshMinutes: 5,
 

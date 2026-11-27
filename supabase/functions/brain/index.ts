@@ -167,6 +167,13 @@ Deno.serve(async (req) => {
   for (const r of settingsRows || []) settings[r.key] = r.value;
   if (!settings.brain_enabled) return Response.json({ ok: true, skipped: "brain_enabled is false" });
 
+  // Monthly ceiling on model usage: stop if this month's tokens exceed settings.monthly_token_ceiling (default 2M).
+  const ceiling = Number(settings.monthly_token_ceiling || 2000000);
+  const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
+  const { data: monthRuns } = await sb.from("runs").select("input_tokens,output_tokens").gte("started_at", monthStart.toISOString());
+  const used = (monthRuns || []).reduce((n, r) => n + (r.input_tokens || 0) + (r.output_tokens || 0), 0);
+  if (used >= ceiling) return Response.json({ ok: false, skipped: `monthly token ceiling reached (${used}/${ceiling})` });
+
   // Don't run twice within 2 minutes.
   const { data: last } = await sb.from("runs").select("started_at").order("started_at", { ascending: false }).limit(1);
   if (last?.[0] && Date.now() - new Date(last[0].started_at).getTime() < 120000) return Response.json({ ok: true, skipped: "ran recently" });
