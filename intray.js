@@ -13,7 +13,7 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmtMin = (m) => (!m ? "" : m % 60 === 0 ? m / 60 + " h" : m >= 60 ? Math.floor(m / 60) + " h " + (m % 60) + " min" : m + " min");
 
-  const SECTIONS = [["urgent", "Urgent"], ["high", "High"], ["medium", "Medium"], ["low", "Low"], ["", "To sort"]];
+  const SECTIONS = [["urgent", "Urgent"], ["high", "High"], ["medium", "Medium"], ["low", "Low"], ["", "Backlog"]];
   const open = new Set();
   const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
   // Notes without the marker line; links become a tappable "Open the email".
