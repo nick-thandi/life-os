@@ -125,6 +125,7 @@
       id: task.id,
       listId: listId,
       title: task.title || "(no title)",
+      notes: task.notes || "",
       priority: fromNotes.priority || p.priority,
       tag: fromNotes.tag || p.tag,
       minutes: fromNotes.minutes || p.minutes,

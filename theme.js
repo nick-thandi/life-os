@@ -5,7 +5,7 @@
   const apply = (t) => { if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t); };
   apply(get());
   document.addEventListener("DOMContentLoaded", () => {
-    const host = document.querySelector(".top .status");
+    const top = document.querySelector(".top"); const host = top && !top.querySelector(".clock") ? top : document.querySelector(".top .status");
     if (!host || document.body.classList.contains("tv")) return;
     const b = document.createElement("button");
     b.className = "theme-toggle";
