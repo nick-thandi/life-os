@@ -130,7 +130,10 @@
     const out = [];
     for (const n of NOTES) {
       const vals = events.concat(ownEvents).filter((e) => noteKind(e) === n).map((e) => e.title.trim().replace(n[1], "").trim()).filter(Boolean);
+      // No calendar entry for the day: fall back to the weekly lists in config.js (0 = Sunday).
+      const fallback = ((n[0] === "menu" ? cfg.menu : cfg.helpers) || {})[viewDate.getDay()];
       if (vals.length) out.push({ label: n[2], icon: n[3], value: [...new Set(vals)].join(", ") });
+      else if (fallback) out.push({ label: n[2], icon: n[3], value: fallback });
     }
     if (!out.length) return null;
     const el = document.createElement("div");

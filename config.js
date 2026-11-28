@@ -40,4 +40,9 @@ window.LIFE_OS_CONFIG = {
   refreshMinutes: 5,
 
   timeZone: "Europe/London",
+  // Shown in the strip above the cards. Keys are weekdays, 0 = Sunday. A calendar entry titled
+  // "Menu: ..." or "Helper: ..." on a given day replaces these for that day.
+  // Helpers are the people outside the four of us who are helping that day.
+  helpers: { 2: "Masi and Chacha", 4: "Nani", 5: "Baba and Bibi" },
+  menu: { 0: "Curry + rice", 1: "Curry + rice", 2: "Pizza + veg", 3: "Fish + chips", 4: "Curry", 6: "Restaurant" },
 };
