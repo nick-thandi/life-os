@@ -157,6 +157,8 @@
     const { start, end } = dayBounds(date);
     return Promise.resolve([
       { id: "a1", title: "Family: bins out tonight", start, end, allDay: true, location: "", description: "" },
+      { id: "a2", title: "Helper: Kini", start, end, allDay: true, location: "", description: "" },
+      { id: "a3", title: "Menu: fish pie & peas", start, end, allDay: true, location: "", description: "" },
       mk("Routine: school run", 8, 15, 8, 45),
       mk("Dad: train to London", 7, 5, 8, 30),
       mk("Dad: sign the agreement that is overdue", 8, 30, 8, 45),

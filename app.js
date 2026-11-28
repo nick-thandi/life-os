@@ -122,7 +122,22 @@
   const expanded = new Set();
   const wide = () => tv || window.matchMedia("(min-width: 768px)").matches;
 
-  function everything() { return events.concat(ownEvents).sort(sortEv); }
+  // Day notes: calendar entries titled "Helper: ..." or "Menu: ..." are shown as a strip above the cards, not as events.
+  const NOTES = [["helper", /^(today'?s\s+)?helper\s*:\s*/i, "Today's helper", "🤝"], ["menu", /^(on\s+the\s+)?(menu|dinner\s+menu)\s*:\s*/i, "On the menu", "🍲"]];
+  const noteKind = (e) => NOTES.find((n) => n[1].test(e.title.trim()));
+  function everything() { return events.concat(ownEvents).filter((e) => !noteKind(e)).sort(sortEv); }
+  function dayNotes() {
+    const out = [];
+    for (const n of NOTES) {
+      const vals = events.concat(ownEvents).filter((e) => noteKind(e) === n).map((e) => e.title.trim().replace(n[1], "").trim()).filter(Boolean);
+      if (vals.length) out.push({ label: n[2], icon: n[3], value: [...new Set(vals)].join(", ") });
+    }
+    if (!out.length) return null;
+    const el = document.createElement("div");
+    el.className = "info-strip" + (out.length === 1 ? " one" : "");
+    el.innerHTML = out.map((o) => '<div class="tile"><span class="icon" aria-hidden="true">' + o.icon + '</span><span class="txt"><span class="label">' + esc(o.label) + '</span><span class="value">' + esc(o.value.charAt(0).toUpperCase() + o.value.slice(1)) + "</span></span></div>").join("");
+    return el;
+  }
   function mineOnly() { const me = meId(); return everything().filter((e) => { const ids = peopleFor(e); return ids.includes(me) || ids[0] === "family"; }); }
   function summary(list, now) {
     const cur = list.find((e) => state(e, now) === "now");
@@ -141,6 +156,8 @@
     renderViewSwitch();
     $.board.innerHTML = "";
     $.board.className = "board view-" + view;
+    const notes = dayNotes();
+    if (notes) $.board.appendChild(notes);
 
     if (view === "me") {
       const me = meId(), list = mineOnly();
