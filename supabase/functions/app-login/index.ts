@@ -57,11 +57,18 @@ Deno.serve(async (req) => {
     const { data: acc } = await sb.from("accounts").select("id,email,label,active").eq("id", s.account_id).single();
     if (!acc || !acc.active) return json(req, { error: "account inactive" }, 403);
     const { data: refresh } = await sb.rpc("get_google_token", { p_account_id: acc.id });
-    const tr = await fetch("https://oauth2.googleapis.com/token", {
+    const mint = (scope: string) => fetch("https://oauth2.googleapis.com/token", {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refresh, grant_type: "refresh_token", scope: APP_TOKEN_SCOPES }),
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refresh, grant_type: "refresh_token", scope }),
     });
-    const tj = await tr.json();
+    let tr = await mint(APP_TOKEN_SCOPES);
+    let tj = await tr.json();
+    // An account that only ever granted the full calendar permission (never the read-only one)
+    // cannot be narrowed to read-only: Google answers invalid_scope. Use what it did grant.
+    if (!tr.ok && tj.error === "invalid_scope") {
+      tr = await mint(APP_TOKEN_SCOPES.replace("/auth/calendar.readonly", "/auth/calendar"));
+      tj = await tr.json();
+    }
     if (!tr.ok) return json(req, { error: "google: " + (tj.error || tr.status) }, 502);
     await sb.from("sessions").update({ last_used_at: new Date().toISOString(), expires_at: new Date(Date.now() + 180 * 86400000).toISOString() }).eq("id", s.id);
     return json(req, { access_token: tj.access_token, expires_in: tj.expires_in, email: acc.email, label: acc.label });
