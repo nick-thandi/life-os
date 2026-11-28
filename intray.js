@@ -13,7 +13,9 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmtMin = (m) => (!m ? "" : m % 60 === 0 ? m / 60 + " h" : m >= 60 ? Math.floor(m / 60) + " h " + (m % 60) + " min" : m + " min");
 
-  const SECTIONS = [["urgent", "Urgent"], ["high", "High"], ["medium", "Medium"], ["low", "Low"], ["", "Backlog"]];
+  const SECTIONS = [["urgent", "🔥 Urgent"], ["high", "⚡ High"], ["medium", "📌 Medium"], ["low", "🐢 Low"], ["", "📦 Backlog"]];
+  const AREA = Object.assign({ home: "🏠", money: "💷", health: "💪", family: "👨‍👩‍👧‍👦", career: "💼", growth: "🌱", fun: "🎉" }, (window.LIFE_OS_CONFIG || {}).areaEmoji || {});
+  const areaLabel = (g) => (AREA[g] ? AREA[g] + " " : "") + cap(g);
   const open = new Set();
   // Which area is showing ("" = all, "none" = tickets with no area) and which priority cards are folded away. Remembered per device.
   const store = { get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } } };
@@ -39,8 +41,8 @@
       row.appendChild(b);
     };
     add("", "All", items.length);
-    present.forEach((g) => add(g, cap(g), items.filter((t) => t.tag === g).length));
-    if (none) add("none", "No area", none);
+    present.forEach((g) => add(g, areaLabel(g), items.filter((t) => t.tag === g).length));
+    if (none) add("none", "📥 No area", none);
     return row;
   }
   const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
@@ -74,7 +76,7 @@
       const ul = document.createElement("ul");
       for (const t of group) {
         const li = document.createElement("li");
-        const meta = [t.tag ? cap(t.tag) : "", t.minutes ? fmtMin(t.minutes) : "", t.big ? "Big job" : ""].filter(Boolean).join(" · ");
+        const meta = [t.tag ? areaLabel(t.tag) : "", t.minutes ? "⏱ " + fmtMin(t.minutes) : "", t.big ? "🏗 Big job" : ""].filter(Boolean).join(" · ");
         const notes = notesHTML(t), isOpen = open.has(t.id);
         li.className = "tk";
         li.innerHTML =

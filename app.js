@@ -109,7 +109,8 @@
   function state(e, now) {
     if (e.allDay) return "allday";
     if (e.end <= now) return "done";
-    if (e.start <= now) return "now";
+    // Something that runs for half a day or more (an overnight stay) is background, not "now".
+    if (e.start <= now) return e.end - e.start >= 12 * 3600000 ? "ongoing" : "now";
     return "later";
   }
 
@@ -188,7 +189,7 @@
     }
     const pool = view === "me" ? mineOnly() : everything();
     const timed = pool.filter((e) => !e.allDay && !isRoutine(e));
-    const current = timed.filter((e) => e.start <= now && e.end > now);
+    const current = timed.filter((e) => e.start <= now && e.end > now && e.end - e.start < 12 * 3600000);
     const next = timed.filter((e) => e.start > now).sort((a, b) => a.start - b.start)[0];
     let html = "";
     if (current.length) {
