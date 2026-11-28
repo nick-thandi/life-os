@@ -219,3 +219,11 @@ details.hint summary { cursor: pointer; min-height: var(--tap); display: flex; a
   body:has(.add) { padding-bottom: calc(var(--tap) * 3 + var(--space-7) + env(safe-area-inset-bottom)); }
   .preview { bottom: calc(var(--tap) * 3 + var(--space-6) + var(--space-2) + env(safe-area-inset-bottom)); }
 }
+
+/* In-tray: area filter chips and fold-away priority cards */
+.chips { margin: 0 0 var(--space-3); padding: 0; }
+.card[class*="tone-"] .card-head.sec-toggle { grid-template-columns: 1fr auto auto; cursor: pointer; }
+.card.shut > ul { display: none; }
+.card.shut .card-head.sec-toggle { border-bottom: 0; }
+.card-head.sec-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--radius); }
+.card.unfolded > .sec-toggle .chev { transform: rotate(-135deg); margin: 4px 4px 0 0; }

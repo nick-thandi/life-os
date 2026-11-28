@@ -15,6 +15,34 @@
 
   const SECTIONS = [["urgent", "Urgent"], ["high", "High"], ["medium", "Medium"], ["low", "Low"], ["", "Backlog"]];
   const open = new Set();
+  // Which area is showing ("" = all, "none" = tickets with no area) and which priority cards are folded away. Remembered per device.
+  const store = { get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } } };
+  let area = store.get("lifeos.intray.area", "");
+  const shut = new Set(store.get("lifeos.intray.shut", []));
+  function chips() {
+    const present = (tasks.TAGS || []).filter((g) => items.some((t) => t.tag === g));
+    const none = items.filter((t) => !t.tag).length;
+    if (area && area !== "none" && !present.includes(area)) area = "";
+    if (area === "none" && !none) area = "";
+    if (present.length + (none ? 1 : 0) < 2) return null;
+    const row = document.createElement("div");
+    row.className = "day-strip chips";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "Show one area");
+    const add = (key, label, n) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label + " " + n;
+      if (area === key) b.className = "active";
+      b.setAttribute("aria-pressed", String(area === key));
+      b.onclick = () => { area = key; store.set("lifeos.intray.area", area); render(); };
+      row.appendChild(b);
+    };
+    add("", "All", items.length);
+    present.forEach((g) => add(g, cap(g), items.filter((t) => t.tag === g).length));
+    if (none) add("none", "No area", none);
+    return row;
+  }
   const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
   // Notes without the marker line; links become a tappable "Open the email".
   function notesHTML(t) {
@@ -32,12 +60,17 @@
       return;
     }
     try { sessionStorage.setItem("lifeos.intray.hadItems", "1"); } catch (e) { /* ignore */ }
+    const row = chips();
+    if (row) $.list.appendChild(row);
+    const shown = !area ? items : area === "none" ? items.filter((t) => !t.tag) : items.filter((t) => t.tag === area);
     for (const [key, label] of SECTIONS) {
-      const group = items.filter((t) => (t.priority || "") === key);
+      const group = shown.filter((t) => (t.priority || "") === key);
       if (!group.length) continue;
       const sec = document.createElement("section");
-      sec.className = "card tone-" + (key || "sort");
-      sec.innerHTML = '<div class="card-head"><span class="head-text"><span class="name">' + label + '</span></span><span class="count">' + group.length + "</span></div>";
+      const isShut = shut.has(key || "backlog");
+      sec.className = "card tone-" + (key || "sort") + (isShut ? " shut" : " unfolded");
+      sec.innerHTML = '<button type="button" class="card-head sec-toggle" aria-expanded="' + !isShut + '"><span class="head-text"><span class="name">' + label + '</span></span><span class="count">' + group.length + '</span><span class="chev" aria-hidden="true"></span></button>';
+      sec.querySelector(".sec-toggle").onclick = () => { const k = key || "backlog"; shut.has(k) ? shut.delete(k) : shut.add(k); store.set("lifeos.intray.shut", [...shut]); render(); };
       const ul = document.createElement("ul");
       for (const t of group) {
         const li = document.createElement("li");
