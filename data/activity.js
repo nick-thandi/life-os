@@ -22,5 +22,6 @@
     list: () => call("GET"),
     undo: (id) => call("POST", { undo: id }),
     approve: (id) => call("POST", { approve: id }),
+    dismiss: (id) => call("POST", { dismiss: id }),
   };
 })();

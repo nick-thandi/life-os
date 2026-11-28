@@ -6,6 +6,7 @@
 //   GET  /activity                -> { me, autonomy, actions: [...] }
 //   POST /activity {undo: id}     -> reverses one action
 //   POST /activity {approve: id}  -> carries out a suggested calendar event
+//   POST /activity {dismiss: id}  -> says no to a suggestion or a "needs you" item; nothing in Google changes
 //
 // Secrets: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -71,16 +72,22 @@ Deno.serve(async (req) => {
       me: email,
       autonomy: settings.autonomy,
       brain_enabled: settings.brain_enabled,
-      actions: (actions || []).map((a: any) => ({ ...a, account: labels[a.account_id], can_undo: !!a.undo && !a.undone_at, can_approve: a.kind === "suggested" && !a.undone_at && !!a.details?.body })),
+      actions: (actions || []).map((a: any) => ({ ...a, account: labels[a.account_id], can_undo: !!a.undo && !a.undone_at, can_approve: a.kind === "suggested" && !a.undone_at && !!a.details?.body, can_dismiss: (a.kind === "suggested" || a.kind === "flagged") && !a.undone_at })),
     });
   }
 
   if (req.method === "POST") {
     const body = await req.json().catch(() => ({}));
-    const id = body.undo || body.approve;
+    const id = body.undo || body.approve || body.dismiss;
     const { data: a } = await sb.from("actions").select("*").eq("id", id).in("account_id", ids).single();
     if (!a) return json(req, { error: "not found" }, 404);
     if (a.undone_at) return json(req, { error: "already done" }, 409);
+    if (body.dismiss) {
+      if (a.kind !== "suggested" && a.kind !== "flagged") return json(req, { error: "nothing to dismiss" }, 400);
+      await sb.from("actions").update({ undone_at: new Date().toISOString() }).eq("id", a.id);
+      await sb.from("actions").insert({ account_id: a.account_id, capture_id: a.capture_id, kind: "dismissed", summary: `Dismissed by ${email}: ${a.summary}`, details: { of: a.id } });
+      return json(req, { ok: true });
+    }
     const token = await googleToken(sb, a.account_id);
 
     if (body.undo && a.undo) {

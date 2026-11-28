@@ -12,7 +12,7 @@
   const av = (label) => { const p = (C.people || []).find((x) => x.id === label); return '<span class="av av-' + (p ? p.id : "family") + '">' + (p ? p.avatar : C.familyAvatar || "") + "</span>"; };
   // "From email: Pay Octopus (!high #money ~15m)" -> title + plain-words detail
   function tidy(a) {
-    let t = nice(a.summary).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y, mo, d) => new Date(Date.UTC(+y, +mo - 1, +d, 12)).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })).replace(/^(Filed|From email|Added from chat|Needs you|Skipped|Would file ticket|Would file from email|Would add to \w+ calendar|Approved by [^:]+|Undone by [^:]+):\s*/i, "");
+    let t = nice(a.summary).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y, mo, d) => new Date(Date.UTC(+y, +mo - 1, +d, 12)).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })).replace(/^(Filed|From email|Added from chat|Needs you|Skipped|Would file ticket|Would file from email|Would add to \w+ calendar|Approved by [^:]+|Undone by [^:]+|Dismissed by [^:]+):\s*/i, "");
     const m = t.match(/\s*\(([!#~][^)]*)\)\s*$/);
     let meta = "";
     if (m) { t = t.slice(0, m.index); meta = m[1].replace(/!(\w+)/, "$1 priority").replace(/#(\w+)/, "$1").replace(/~(\d+)m/, "$1 min").replace(/~(\d+)h/, "$1 h").split(/\s+(?=\w+ priority|[a-z]+$|\d)/).join(" · "); }
@@ -27,9 +27,11 @@
       '<div class="what"><span class="title">' + esc(x.title) + "</span>" +
       '<span class="sup">' + esc([KIND[a.kind] || a.kind, fmt(a.created_at)].join(" · ")) + "</span>" +
       (why ? '<span class="sup">' + esc(why) + "</span>" : "") + "</div>" +
-      '<div class="btns">' + (a.can_approve ? '<button class="approve">Approve</button>' : "") + (a.can_undo ? '<button class="undo">Undo</button>' : "") + "</div>";
+      '<div class="btns">' + (a.can_approve ? '<button class="approve">Approve</button>' : "") + (a.can_dismiss ? '<button class="dismiss">' + (a.can_approve ? "Reject" : "Dismiss") + "</button>" : "") + (a.can_undo ? '<button class="undo">Undo</button>' : "") + "</div>";
     const b1 = li.querySelector(".undo"), b2 = li.querySelector(".approve");
     if (b1) b1.onclick = async () => { b1.disabled = true; try { await act.undo(a.id); await load(); } catch (e) { $.status.textContent = e.message; b1.disabled = false; } };
+    const b3 = li.querySelector(".dismiss");
+    if (b3) b3.onclick = async () => { b3.disabled = true; try { await act.dismiss(a.id); await load(); } catch (e) { $.status.textContent = e.message; b3.disabled = false; } };
     if (b2) b2.onclick = async () => { b2.disabled = true; try { await act.approve(a.id); await load(); } catch (e) { $.status.textContent = e.message; b2.disabled = false; } };
     return li;
   }
@@ -43,7 +45,7 @@
     return sec;
   }
   function render(res) {
-    KIND.ticket_filed = "Ticket filed"; KIND.event_created = "Added to the calendar"; KIND.suggested = "Suggestion"; KIND.flagged = "Could not tell what this is"; KIND.noted = "Note"; KIND.undone = "Undone";
+    KIND.ticket_filed = "Ticket filed"; KIND.event_created = "Added to the calendar"; KIND.suggested = "Suggestion"; KIND.flagged = "Could not tell what this is"; KIND.noted = "Note"; KIND.undone = "Undone"; KIND.dismissed = "Rejected by you";
     $.mode.textContent = "";
     $.list.innerHTML = "";
     const banner = document.createElement("p");
