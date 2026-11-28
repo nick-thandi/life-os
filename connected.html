@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life OS</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+<style>main{max-width:30em;margin:18vh auto 0;padding:0 24px;text-align:center}main img{width:88px;height:88px;border-radius:20px}h1{font-size:1.5rem;margin:24px 0 8px}p{margin:0 0 24px;line-height:1.5}a.go{display:inline-block;padding:12px 20px;border-radius:12px;background:#17213A;color:#fff;text-decoration:none}</style>
+</head>
+<body>
+<main>
+  <img src="icons/icon-192.png" alt="">
+  <h1 id="h">One moment</h1>
+  <p id="p"></p>
+  <a class="go" href="./">Open Life OS</a>
+</main>
+<script>
+(function () {
+  var q = new URLSearchParams(location.hash.slice(1)), h = document.getElementById("h"), p = document.getElementById("p");
+  if (q.get("outlook")) {
+    h.textContent = "Outlook connected";
+    p.textContent = q.get("outlook") + " will now be checked every few minutes. Anything that needs doing lands in the in-tray of " + q.get("owner") + ". Life OS only reads; it never sends, moves or deletes email.";
+  } else {
+    h.textContent = "That did not connect";
+    p.textContent = q.get("error") || "No reason was given. Open the connect link again.";
+  }
+  history.replaceState(null, "", location.pathname);
+})();
+</script>
+</body>
+</html>

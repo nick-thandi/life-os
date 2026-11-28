@@ -28,3 +28,10 @@ Nick's old Outlook account is not connected to the brain: a personal Microsoft a
 - `functions/outlook-file`: dedupes against `outlook_seen`, adds tickets to the Tickets list of `settings.outlook_target_email`, logs each in `actions` with undo, and moves `settings.outlook_last_sweep_at` only when every ticket landed.
 - Table `outlook_seen` (RLS, deny-all). The three SQL functions are not executable by `anon` or `authenticated`.
 Nothing is ever sent, moved, labelled or deleted in Outlook.
+
+## Outlook, swept natively (28 Nov 2026)
+
+- `microsoft-connect`: one-time Microsoft sign-in per legacy Outlook mailbox (personal accounts, read-only `Mail.Read`). Only mailboxes in `settings.outlook_owners` may connect; missing or empty means nobody.
+- `outlook-sweep`: every 5 minutes (cron `life-os-outlook-sweep`, minutes 2, 7, 12 ...). Inbox only, sender/subject/date/preview only. Tickets go to the owner's Google Tasks "Tickets" list; unknown senders get a warning sign.
+- Table `ms_accounts`; tokens in Vault through `store_ms_token` / `get_ms_token` (service role only).
+- Secrets: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` (expires 27 Nov 2028).
