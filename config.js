@@ -13,7 +13,8 @@ window.LIFE_OS_CONFIG = {
   // event title, e.g. "Dad: off work" or "Kini - karate". Anything that does
   // not match a person is shown under "Family".
   people: [
-    { id: "dad",   name: "Dad",   prefixes: ["dad", "nick"], avatar: "🦁", calendar: "nickthandi7@gmail.com" },
+    { id: "dad",   name: "Dad",   prefixes: ["dad", "nick"], avatar: "🦁", calendar: "nickthandi7@gmail.com",
+      calendars: ["t9k6vkci8uki806eaccu10ruek@group.calendar.google.com"] }, // Tottenham fixtures
     { id: "mum",   name: "Mum",   prefixes: ["mum", "sam"],  avatar: "🦊", calendar: "" },
     { id: "kini",  name: "Kini",  prefixes: ["kini", "mia"], avatar: "🐼" },
     { id: "pooks", name: "Pooks", prefixes: ["pooks"],       avatar: "🐥" },

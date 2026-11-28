@@ -176,8 +176,15 @@
   async function peopleEventsForDay(date) {
     if (mode() === "demo") return [];
     const out = [];
-    await Promise.all((cfg.people || []).filter((p) => p.calendar && p.calendar.toLowerCase() !== String(cfg.calendarId).toLowerCase()).map(async (p) => {
-      try { (await googleEvents(date, p.calendar)).forEach((e) => out.push(Object.assign(e, { owner: p.id }))); } catch (e) { /* not shared with this account */ }
+    // A person can have their own calendar plus extra ones they follow (calendars: [...]), e.g. a football fixture list.
+    const jobs = [];
+    for (const p of cfg.people || []) {
+      for (const id of [p.calendar].concat(p.calendars || [])) {
+        if (id && id.toLowerCase() !== String(cfg.calendarId).toLowerCase()) jobs.push([p.id, id]);
+      }
+    }
+    await Promise.all(jobs.map(async ([owner, id]) => {
+      try { (await googleEvents(date, id)).forEach((e) => out.push(Object.assign(e, { owner }))); } catch (e) { /* not shared with this account */ }
     }));
     return out;
   }
