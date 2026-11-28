@@ -227,3 +227,7 @@ details.hint summary { cursor: pointer; min-height: var(--tap); display: flex; a
 .card.shut .card-head.sec-toggle { border-bottom: 0; }
 .card-head.sec-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--radius); }
 .card.unfolded > .sec-toggle .chev { transform: rotate(-135deg); margin: 4px 4px 0 0; }
+
+/* Three or more faces overlap so the title keeps its room */
+.who.many { gap: 0; }
+.who.many .av + .av { margin-left: -5px; }

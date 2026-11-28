@@ -91,13 +91,15 @@
   const nameOf = (id) => (cfg.people.find((p) => p.id === id) || { name: "Family" }).name;
   const avatarOf = (id) => (cfg.people.find((p) => p.id === id) || { avatar: cfg.familyAvatar || "" }).avatar || "";
   function avatars(ids) {
-    return '<span class="who" aria-label="' + esc(ids.map(nameOf).join(" and ")) + '">' + ids.map((id) => '<span class="av av-' + id + '" title="' + esc(nameOf(id)) + '">' + avatarOf(id) + "</span>").join("") + "</span>";
+    // An event for the whole family shows everyone's face.
+    if (ids.length === 1 && ids[0] === "family") { ids = cfg.people.map((p) => p.id); if (!ids.length) ids = ["family"]; }
+    return '<span class="who' + (ids.length > 2 ? " many" : "") + '" aria-label="' + esc(ids.length === cfg.people.length && ids.length > 2 ? "Everyone" : ids.map(nameOf).join(" and ")) + '">' + ids.map((id) => '<span class="av av-' + id + '" title="' + esc(nameOf(id)) + '">' + avatarOf(id) + "</span>").join("") + "</span>";
   }
   // One row, used by every card: time, title, optional supporting line, and who is involved.
   function row(e, now, forId) {
     const p = parse(e), st = state(e, now);
     const sup = [p.detail, e.location].filter(Boolean).join(" · ");
-    const showWho = forId === "all" ? true : p.ids.length > 1;
+    const showWho = forId === "all" ? true : p.ids.length > 1 || p.ids[0] === "family";
     const li = document.createElement("li");
     li.className = "ev " + st;
     li.innerHTML = '<span class="time">' + fmtSpan(e) + "</span>" +
