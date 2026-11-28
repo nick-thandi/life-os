@@ -3,7 +3,8 @@
 // Outlook inbox through Nick's Microsoft connector (sender, subject, date only) and decides ticket / ignore.
 // This function is the only write path: it dedupes against outlook_seen, adds tickets to the target account's
 // Google Tasks "Tickets" list, logs each one in actions (with undo), and only then marks the email as seen.
-// POST { nonce, swept_until, items: [{ id, received, decision, title, priority, tag, minutes, from, subject, link }] }
+// POST { nonce, swept_until, items: [{ id, received, decision, title, priority, tag, minutes, from, subject, link, known }] }
+// known === false marks a sender the sweep did not recognise: the ticket title gets a warning sign and a caution line.
 // The nonce is a one-time value placed in settings.admin_nonce from inside the database and consumed on use.
 // Nothing is ever sent, moved, labelled or deleted in Outlook.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -53,14 +54,15 @@ Deno.serve(async (req) => {
     let list = (lists.items || []).find((l: any) => norm(l.title) === "ticket");
     if (!list) list = await (await fetch("https://tasks.googleapis.com/tasks/v1/users/@me/lists", { method: "POST", headers: h, body: JSON.stringify({ title: "Tickets" }) })).json();
     for (const t of tickets) {
-      const title = clean(t.title || t.subject || "Outlook email needs action", 200);
+      const unknown = t.known === false;
+      const title = (unknown ? "⚠️ " : "") + clean(t.title || t.subject || "Outlook email needs action", 200);
       const mk = [PRIORITIES.includes(t.priority) ? `!${t.priority}` : "!medium", TAGS.includes(t.tag) ? `#${t.tag}` : "", Number(t.minutes) > 0 ? `~${Math.round(Number(t.minutes))}m` : ""].filter(Boolean).join(" ");
       const link = /^https:\/\/outlook\.live\.com\//.test(String(t.link || "")) ? String(t.link) : "";
-      const notes = [mk, `From Outlook: ${clean(t.from, 120)}`, clean(t.subject, 200), link].filter(Boolean).join("\n");
+      const notes = [mk, unknown ? "⚠️ Sender not recognised. Check it is real before acting, and never pay from a link in the email." : "", `From Outlook: ${clean(t.from, 120)}`, clean(t.subject, 200), link].filter(Boolean).join("\n");
       const r = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks`, { method: "POST", headers: h, body: JSON.stringify({ title, notes }) });
       const j = await r.json();
       if (!r.ok) { failed.push(t.id); continue; }
-      await sb.from("actions").insert({ account_id: acc.id, kind: "ticket_filed", summary: `Filed from Outlook: ${title} (${mk})`, details: { source: "outlook", from: clean(t.from, 120), subject: clean(t.subject, 200), notes }, undo: { kind: "task_complete", url: `https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks/${j.id}` } });
+      await sb.from("actions").insert({ account_id: acc.id, kind: "ticket_filed", summary: `Filed from Outlook: ${title} (${mk})`, details: { source: "outlook", known: !unknown, from: clean(t.from, 120), subject: clean(t.subject, 200), notes }, undo: { kind: "task_complete", url: `https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks/${j.id}` } });
       await sb.from("outlook_seen").upsert({ message_id: t.id, decision: "ticket", received_at: received(t) });
       filed++;
     }
